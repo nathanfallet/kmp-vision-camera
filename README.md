@@ -1,1 +1,157 @@
-# kmp-vision-camera
+# KMP Vision Camera
+
+[![License](https://img.shields.io/github/license/nathanfallet/kmp-vision-camera)](LICENSE)
+[![Maven Central Version](https://img.shields.io/maven-central/v/me.nathanfallet.visioncamera/core)](https://klibs.io/project/nathanfallet/kmp-vision-camera)
+[![Issues](https://img.shields.io/github/issues/nathanfallet/kmp-vision-camera)]()
+[![Pull Requests](https://img.shields.io/github/issues-pr/nathanfallet/kmp-vision-camera)]()
+[![codecov](https://codecov.io/github/nathanfallet/kmp-vision-camera/branch/main/graph/badge.svg)](https://codecov.io/github/nathanfallet/kmp-vision-camera)
+[![CodeFactor](https://www.codefactor.io/repository/github/nathanfallet/kmp-vision-camera/badge)](https://www.codefactor.io/repository/github/nathanfallet/kmp-vision-camera)
+
+> This project is a Kotlin Multiplatform port of [React Native VisionCamera](https://github.com/mrousavy/react-native-vision-camera)
+> (V5) by [Marc Rousavy](https://github.com/mrousavy) / [Margelo](https://margelo.com). It keeps the same concepts and
+> the same API, with Kotlin coroutines instead of Promises and Compose instead of React: if you know VisionCamera, you
+> already know KMP Vision Camera. It is not affiliated with, nor endorsed by, Margelo or the VisionCamera authors.
+
+KMP Vision Camera is a high-performance camera library for Kotlin Multiplatform (Android and iOS). It gives access to
+the full power of the native camera APIs (CameraX and Camera2 on Android, AVFoundation on iOS) through a single
+Kotlin API, from a simple preview to advanced session configuration, and soon photo, video and real-time frame
+processing.
+
+* **Documentation:** [visioncamera.nathanfallet.me](https://visioncamera.nathanfallet.me)
+* **API reference:** [visioncamera.nathanfallet.me/api](https://visioncamera.nathanfallet.me/api)
+* **Repository:** [github.com/nathanfallet/kmp-vision-camera](https://github.com/nathanfallet/kmp-vision-camera)
+
+## Features
+
+* **VisionCamera's API in Kotlin** – `VisionCamera`, `CameraDevice`, `CameraSession`, outputs, constraints,
+  `CameraController`… the same names and concepts, so the VisionCamera documentation and knowledge apply.
+* **Native engines** – CameraX (with Camera2 interop) on Android, AVFoundation on iOS, with all devices and their
+  capabilities exposed: physical lenses, formats, FPS ranges, HDR, zoom, torch, exposure…
+* **Constraints** – describe what you want (60 FPS, HDR, stabilization, resolution priority…), and the session
+  negotiates the closest configuration the device supports.
+* **Coroutines first** – every asynchronous operation is a `suspend` function.
+* **Compose optional** – the engine has no Compose dependency and works with Android Views, UIKit or SwiftUI; the
+  `compose` module adds `Camera`, `NativePreviewView` and `remember*` helpers.
+
+## Status
+
+Early development. What works today:
+
+- [x] Permissions (camera and microphone)
+- [x] Camera devices: listing, default devices, capabilities, formats, physical devices
+- [x] Camera sessions: configuration with connections and constraints, start/stop, lifecycle, interruptions
+- [x] Camera controller: zoom, torch, exposure bias, low-light boost
+- [x] Preview output and preview views (Android `View`, iOS `UIView`, Compose)
+- [ ] Photo output
+- [ ] Video output
+- [ ] Frame output (frame processing)
+- [ ] Barcode scanner
+- [ ] Depth, multi-cam, Skia, resizer…
+
+## Installation
+
+Add the dependencies to your `build.gradle.kts`, in the `commonMain` source set:
+
+```kotlin
+dependencies {
+    implementation("me.nathanfallet.visioncamera:core:0.1.0")
+    // Optional, for Compose Multiplatform:
+    implementation("me.nathanfallet.visioncamera:compose:0.1.0")
+}
+```
+
+On Android, declare the permissions you need in your `AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.CAMERA" />
+<!-- Only if you record audio -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+On iOS, add `NSCameraUsageDescription` (and `NSMicrophoneUsageDescription` if you record audio) to your
+`Info.plist`.
+
+## Usage
+
+### Compose
+
+```kotlin
+@Composable
+fun CameraScreen() {
+    val permission = rememberCameraPermission()
+    LaunchedEffect(permission.hasPermission) {
+        if (!permission.hasPermission && permission.canRequestPermission) permission.requestPermission()
+    }
+    if (!permission.hasPermission) return
+
+    Camera(
+        device = TargetCameraPosition.BACK,
+        isActive = true,
+        modifier = Modifier.fillMaxSize(),
+    )
+}
+```
+
+Or, with more control over the device and the outputs:
+
+```kotlin
+val device = rememberCameraDevice(TargetCameraPosition.BACK)
+val previewOutput = rememberPreviewOutput()
+val controller = rememberCamera(
+    isActive = true,
+    device = device ?: TargetCameraPosition.BACK,
+    outputs = listOf(previewOutput),
+    constraints = listOf(FPSConstraint(60.0)),
+)
+NativePreviewView(previewOutput, Modifier.fillMaxSize())
+```
+
+### Imperative API
+
+The engine has no Compose dependency, and can be used from any Kotlin code (Android Views, UIKit, SwiftUI…):
+
+```kotlin
+if (VisionCamera.cameraPermissionStatus != PermissionStatus.AUTHORIZED) {
+    VisionCamera.requestCameraPermission()
+}
+
+val deviceFactory = VisionCamera.createDeviceFactory()
+val device = getCameraDevice(deviceFactory, TargetCameraPosition.BACK)!!
+val previewOutput = VisionCamera.createPreviewOutput()
+
+val session = VisionCamera.createCameraSession(enableMultiCam = false)
+val (controller) = session.configure(
+    listOf(
+        CameraSessionConnection(
+            input = device,
+            outputs = listOf(CameraOutputConfiguration(previewOutput)),
+            constraints = listOf(FPSConstraint(60.0)),
+        ),
+    ),
+)
+session.start()
+controller.setZoom(2.0)
+
+// Display it in a PreviewView (an Android View, or a UIView on iOS)
+previewView.previewOutput = previewOutput
+```
+
+## Documentation
+
+Guides are available at [visioncamera.nathanfallet.me](https://visioncamera.nathanfallet.me). Since the API mirrors
+VisionCamera's, the [VisionCamera documentation](https://visioncamera.margelo.com) is also a great resource.
+
+## Sample app
+
+The [sample](sample) module contains a demo app for Android ([sample-android](sample-android)) and iOS
+([sample-ios](sample-ios)).
+
+## Credits
+
+KMP Vision Camera is a port of [React Native VisionCamera](https://github.com/mrousavy/react-native-vision-camera),
+licensed under the MIT license, Copyright (c) 2025 Marc Rousavy. Its architecture, API design and
+native implementation are the foundation of this project. Its license notice is reproduced in [NOTICE](NOTICE).
+
+## License
+
+KMP Vision Camera is licensed under the [Apache License 2.0](LICENSE).

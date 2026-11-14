@@ -1,0 +1,14 @@
+# Site settings
+title: KMP Vision Camera
+description: A high-performance camera library for Kotlin Multiplatform, ported from React Native VisionCamera.
+repository: nathanfallet/kmp-vision-camera
+
+theme: just-the-docs
+color_scheme: dark
+
+nav_enabled: true
+nav_external_links:
+  - title: API reference
+    url: https://visioncamera.nathanfallet.me/api
+  - title: GitHub
+    url: https://github.com/nathanfallet/kmp-vision-camera
