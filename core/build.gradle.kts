@@ -61,7 +61,7 @@ kotlin {
     }
 
     sourceSets {
-        all {
+        matching { it.name.startsWith("ios") }.configureEach {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
         commonMain.dependencies {
@@ -77,6 +77,10 @@ kotlin {
             api(libs.camerax.core)
             implementation(libs.camerax.camera2)
             api(libs.camerax.lifecycle)
+            implementation(libs.camerax.video)
+            implementation(libs.camerax.view)
+            implementation(libs.camerax.extensions)
+            implementation(libs.androidx.activity)
             api(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.process)
         }

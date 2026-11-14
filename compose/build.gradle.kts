@@ -61,7 +61,7 @@ kotlin {
     }
 
     sourceSets {
-        all {
+        matching { it.name.startsWith("ios") }.configureEach {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
         commonMain.dependencies {

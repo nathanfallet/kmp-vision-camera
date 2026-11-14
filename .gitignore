@@ -19,3 +19,6 @@ DerivedData/
 ### Docs ###
 docs/_site
 docs/.jekyll-cache
+
+### Claude Code ###
+.claude/
