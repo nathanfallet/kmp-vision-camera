@@ -50,6 +50,9 @@ include(":location")
 // The optional Compose integration of the location module (me.nathanfallet.visioncamera.location.compose).
 include(":location-compose")
 
+// The optional GPU frame resizer module (me.nathanfallet.visioncamera.resizer), port of V5's resizer package.
+include(":resizer")
+
 // The demo app: shared Compose UI, and its thin Android application (AGP 9 needs the application plugin in its own
 // module). The iOS app is the Xcode project in sample-ios. Not published.
 include(":sample")

@@ -1,0 +1,10 @@
+# The Metal pipeline of the resizer's iOS implementation (src/iosMain/objc), see VisionCameraResizerNative.h.
+# libVisionCameraResizerNative.a is built for each target by the resizer's buildIosNativeLibrary* tasks, and embedded in
+# the klib.
+language = Objective-C
+package = me.nathanfallet.visioncamera.resizer.interop
+headers = VisionCameraResizerNative.h
+headerFilter = VisionCameraResizerNative.h
+compilerOpts = -fobjc-arc
+linkerOpts = -framework Metal
+staticLibraries = libVisionCameraResizerNative.a
