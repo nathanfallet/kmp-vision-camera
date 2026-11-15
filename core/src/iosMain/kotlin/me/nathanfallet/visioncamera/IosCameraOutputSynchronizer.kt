@@ -38,7 +38,7 @@ internal class IosCameraOutputSynchronizer(
         synchronizer = AVCaptureDataOutputSynchronizer(dataOutputs = avOutputs)
 
         // Set delegate
-        synchronizer.setDelegate(delegate, queue = queue)
+        synchronizer.setDelegate(delegate.native, queue = queue)
     }
 
     override fun setOnFramesCallback(onFrames: ((frames: List<FrameOrDepth>) -> Unit)?) {

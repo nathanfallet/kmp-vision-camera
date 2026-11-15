@@ -2,7 +2,9 @@ package me.nathanfallet.visioncamera
 
 import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDepthDataOutput
+import me.nathanfallet.visioncamera.interop.VCDepthDataOutputDelegate
 import platform.AVFoundation.AVMediaTypeDepthData
+import platform.CoreMedia.CMTimeMake
 import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.Volatile
 
@@ -16,7 +18,9 @@ import kotlin.concurrent.Volatile
 internal class IosCameraDepthFrameOutput(
     private val options: DepthFrameOutputOptions,
 ) : CameraDepthFrameOutput, NativeCameraOutput {
-    private val delegate = DepthFrameDelegate()
+    // An Objective-C delegate (VisionCameraNative.h), so that AVDepthData never becomes a Kotlin reference retained
+    // until the next garbage collection, which would exhaust AVFoundation's depth buffers.
+    private val delegate = VCDepthDataOutputDelegate()
     private val queue = createSerialQueue(QUEUE_LABEL)
     private val isDisposed = AtomicInt(0)
 
@@ -80,13 +84,15 @@ internal class IosCameraDepthFrameOutput(
     }
 
     override fun setOnDepthFrameCallback(onDepthFrame: ((depth: Depth) -> Unit)?) {
-        delegate.onDepthFrame = onDepthFrame?.let { callback ->
-            { depthData, timestamp, bufferOrientation, isBufferMirrored ->
+        delegate.onDepthData = onDepthFrame?.let { callback ->
+            { depthData, timestampValue, timestampScale, connection ->
+                // `depthData` is a +1 reference, owned by the Depth from now on
+                val depthData = checkNotNull(depthData)
                 // Prepare Depth Frame + Metadata
                 val metadata = MediaSampleMetadata.relativeToOutput(
-                    timestamp = timestamp,
-                    bufferOrientation = bufferOrientation,
-                    isBufferMirrored = isBufferMirrored,
+                    timestamp = CMTimeMake(timestampValue, timestampScale),
+                    bufferOrientation = checkNotNull(connection).orientation,
+                    isBufferMirrored = connection.videoMirrored,
                     mirrorMode = mirrorMode,
                     outputOrientation = outputOrientation,
                 )
@@ -98,7 +104,7 @@ internal class IosCameraDepthFrameOutput(
     }
 
     override fun setOnDepthFrameDroppedCallback(onDepthFrameDropped: ((reason: FrameDroppedReason) -> Unit)?) {
-        delegate.onDepthFrameDropped = onDepthFrameDropped?.let { callback ->
+        delegate.onDepthDataDropped = onDepthFrameDropped?.let { callback ->
             { avReason -> callback(frameDroppedReasonOf(avReason)) }
         }
     }
@@ -106,8 +112,8 @@ internal class IosCameraDepthFrameOutput(
     override fun dispose() {
         if (!isDisposed.compareAndSet(0, 1)) return
         // Stop receiving Depth frames: clear the callbacks and detach the delegate.
-        delegate.onDepthFrame = null
-        delegate.onDepthFrameDropped = null
+        delegate.onDepthData = null
+        delegate.onDepthDataDropped = null
         output.setDelegate(null, callbackQueue = null)
     }
 

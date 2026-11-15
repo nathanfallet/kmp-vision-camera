@@ -47,6 +47,81 @@ mavenPublishing {
  * The camera engine. Android is backed by CameraX (+ Camera2 interop), iOS by AVFoundation.
  * It has no Compose dependency: the Compose integration lives in the compose module.
  */
+/**
+ * Compiles the Objective-C sources of src/iosMain/objc into libVisionCameraNative.a for one iOS target, with Xcode's
+ * clang. cinterop (src/nativeInterop/cinterop/VisionCameraNative.def) embeds the library in the target's klib, so
+ * apps and other modules link it without any setup.
+ */
+@CacheableTask
+abstract class BuildIosNativeLibraryTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    /** The SDK, `iphoneos` or `iphonesimulator`. */
+    @get:Input
+    abstract val sdk: Property<String>
+
+    /** The clang target triple, e.g. `arm64-apple-ios15.0-simulator`. */
+    @get:Input
+    abstract val targetTriple: Property<String>
+
+    @get:Input
+    abstract val libraryName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
+    @TaskAction
+    fun build() {
+        val output = outputDirectory.get().asFile
+        output.deleteRecursively()
+        output.mkdirs()
+        val objects = sources.files.filter { it.extension == "m" }.sorted().map { source ->
+            output.resolve("${source.nameWithoutExtension}.o").also { objectFile ->
+                execOperations.exec {
+                    commandLine(
+                        "xcrun", "--sdk", sdk.get(), "clang",
+                        "-target", targetTriple.get(),
+                        "-fobjc-arc",
+                        "-fmodules",
+                        "-O2",
+                        "-Wall",
+                        "-Werror",
+                        "-c", source.absolutePath,
+                        "-o", objectFile.absolutePath,
+                    )
+                }
+            }
+        }
+        execOperations.exec {
+            commandLine("xcrun", "libtool", "-static", "-o", output.resolve("lib${libraryName.get()}.a").absolutePath)
+            args(objects.map { it.absolutePath })
+        }
+    }
+}
+
+/** The minimum iOS version of libVisionCameraNative.a: Kotlin/Native's default. */
+val iosMinVersion = "15.0"
+
+/** The tasks building libVisionCameraNative.a, by Kotlin target name. */
+val buildIosNativeLibraries = mapOf(
+    "iosArm64" to ("iphoneos" to "arm64-apple-ios$iosMinVersion"),
+    "iosSimulatorArm64" to ("iphonesimulator" to "arm64-apple-ios$iosMinVersion-simulator"),
+).mapValues { (targetName, platform) ->
+    tasks.register<BuildIosNativeLibraryTask>("buildIosNativeLibrary${targetName.replaceFirstChar { it.uppercase() }}") {
+        description = "Compiles libVisionCameraNative.a (Objective-C) for $targetName with Xcode's clang."
+        sources.from(fileTree("src/iosMain/objc"))
+        sdk.set(platform.first)
+        targetTriple.set(platform.second)
+        libraryName.set("VisionCameraNative")
+        outputDirectory.set(layout.buildDirectory.dir("generated/iosNativeLibraries/$targetName"))
+    }
+}
+
 kotlin {
     jvmToolchain(21)
     android {
@@ -55,8 +130,16 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
         withHostTest {}
     }
-    iosArm64()
-    iosSimulatorArm64()
+    // Objective-C delegates and helpers that keep the AVFoundation objects backed by a buffer pool (depth data,
+    // synchronized data) out of Kotlin/Native's garbage collector: see VisionCameraNative.def.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        val library = buildIosNativeLibraries.getValue(target.name)
+        target.compilations.getByName("main").cinterops.create("VisionCameraNative") {
+            includeDirs(file("src/iosMain/objc"))
+            extraOpts("-libraryPath", library.get().outputDirectory.get().asFile.absolutePath)
+            tasks.named(interopProcessingTaskName) { dependsOn(library) }
+        }
+    }
 
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")

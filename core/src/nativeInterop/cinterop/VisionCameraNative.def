@@ -1,0 +1,8 @@
+# Objective-C delegates and helpers of the iOS implementation (src/iosMain/objc), see VisionCameraNative.h.
+# libVisionCameraNative.a is built for each target by core's buildIosNativeLibrary* tasks, and embedded in the klib.
+language = Objective-C
+package = me.nathanfallet.visioncamera.interop
+headers = VisionCameraNative.h
+headerFilter = VisionCameraNative.h
+compilerOpts = -fobjc-arc
+staticLibraries = libVisionCameraNative.a

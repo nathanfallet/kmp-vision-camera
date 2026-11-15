@@ -1,32 +1,34 @@
 package me.nathanfallet.visioncamera
 
+import me.nathanfallet.visioncamera.interop.VCSynchronizedMediaTypeDepth
+import me.nathanfallet.visioncamera.interop.VCSynchronizedMediaTypeVideo
+import me.nathanfallet.visioncamera.interop.VCSynchronizedOutputDelegate
 import platform.AVFoundation.AVCaptureConnection
-import platform.AVFoundation.AVCaptureDataOutputSynchronizer
-import platform.AVFoundation.AVCaptureDataOutputSynchronizerDelegateProtocol
-import platform.AVFoundation.AVCaptureDepthDataOutput
-import platform.AVFoundation.AVCaptureOutput
 import platform.AVFoundation.AVCaptureOutputDataDroppedReason
-import platform.AVFoundation.AVCaptureOutputDataDroppedReasonNone
-import platform.AVFoundation.AVCaptureSynchronizedData
-import platform.AVFoundation.AVCaptureSynchronizedDataCollection
-import platform.AVFoundation.AVCaptureSynchronizedDepthData
-import platform.AVFoundation.AVCaptureSynchronizedSampleBufferData
-import platform.AVFoundation.AVCaptureVideoDataOutput
-import platform.AVFoundation.AVMediaTypeDepthData
-import platform.AVFoundation.AVMediaTypeVideo
-import platform.darwin.NSObject
+import platform.CoreMedia.CMSampleBufferRef
+import platform.CoreMedia.CMTimeMake
 import kotlin.concurrent.AtomicReference
 
 /**
- * The [AVCaptureDataOutputSynchronizerDelegateProtocol] of a [CameraOutputSynchronizer] (port of V5's
- * `SynchronizedOutputDelegate.swift`). Every synchronized sample is wrapped in an [IosFrame] or an [IosDepth].
+ * The delegate of a [CameraOutputSynchronizer] (port of V5's `SynchronizedOutputDelegate.swift`). Every synchronized
+ * sample is wrapped in an [IosFrame] or an [IosDepth].
+ *
+ * The synchronized data collections are read by an Objective-C delegate ([native], see VisionCameraNative.h): as
+ * Kotlin references, they would stay retained (with their video and depth buffers) until the next garbage
+ * collection, and AVFoundation's buffer pools would run out.
  *
  * The callbacks can be set from any thread; they are called on the synchronizer's queue.
  */
-internal class SynchronizedOutputDelegate : NSObject(), AVCaptureDataOutputSynchronizerDelegateProtocol {
+internal class SynchronizedOutputDelegate {
     private val onFramesRef = AtomicReference<((List<FrameOrDepth>) -> Unit)?>(null)
     private val onFrameDroppedRef =
         AtomicReference<((MediaType, AVCaptureOutputDataDroppedReason) -> Unit)?>(null)
+
+    /** The frames of the collection being delivered (the delegate is called on a serial queue). */
+    private val pendingFrames = AtomicReference<MutableList<FrameOrDepth>?>(null)
+
+    /** The [VCSynchronizedOutputDelegate] to set on the `AVCaptureDataOutputSynchronizer`. */
+    val native: VCSynchronizedOutputDelegate = createNativeDelegate(onFramesRef, onFrameDroppedRef, pendingFrames)
 
     /** Called with each set of synchronized frames. */
     var onFrames: ((List<FrameOrDepth>) -> Unit)?
@@ -42,84 +44,51 @@ internal class SynchronizedOutputDelegate : NSObject(), AVCaptureDataOutputSynch
             onFrameDroppedRef.value = value
         }
 
-    override fun dataOutputSynchronizer(
-        synchronizer: AVCaptureDataOutputSynchronizer,
-        didOutputSynchronizedDataCollection: AVCaptureSynchronizedDataCollection,
-    ) {
-        val onFrames = onFrames ?: return
-
-        val datas = mutableListOf<FrameOrDepth>()
-        for (output in synchronizer.dataOutputs.filterIsInstance<AVCaptureOutput>()) {
-            val data = didOutputSynchronizedDataCollection.synchronizedDataForCaptureOutput(output)
-            if (data == null) {
-                Logger.info("AVCaptureSynchronizedDataCollection does not contain data for $output!")
-                continue
+    private companion object {
+        // The blocks only capture these references, not the SynchronizedOutputDelegate: a Kotlin object referenced by
+        // a block retained by Objective-C is not collected while the block is alive.
+        fun createNativeDelegate(
+            onFramesRef: AtomicReference<((List<FrameOrDepth>) -> Unit)?>,
+            onFrameDroppedRef: AtomicReference<((MediaType, AVCaptureOutputDataDroppedReason) -> Unit)?>,
+            pendingFrames: AtomicReference<MutableList<FrameOrDepth>?>,
+        ): VCSynchronizedOutputDelegate = VCSynchronizedOutputDelegate().apply {
+            onBegin = { pendingFrames.value = mutableListOf() }
+            onVideo = { sampleBuffer, timestampValue, timestampScale, connection ->
+                // Video Frame (the Frame retains the buffer)
+                val buffer: CMSampleBufferRef = checkNotNull(sampleBuffer)
+                val metadata = metadataOf(timestampValue, timestampScale, checkNotNull(connection))
+                pendingFrames.value?.add(IosFrame(buffer = buffer, metadata = metadata))
             }
-            try {
-                getSynchronizedFrame(synchronizer, data)?.let { datas.add(it) }
-            } catch (e: VisionCameraException) {
-                Logger.error("Failed to capture AVCaptureSynchronizedData $data! Error: ${e.message}")
-                onFrameDropped?.invoke(MediaType.OTHER, AVCaptureOutputDataDroppedReasonNone)
+            onDepth = { depthData, timestampValue, timestampScale, connection ->
+                // Depth Frame (`depthData` is a +1 reference, owned by the Depth from now on)
+                val metadata = metadataOf(timestampValue, timestampScale, checkNotNull(connection))
+                pendingFrames.value?.add(IosDepth(depthData = checkNotNull(depthData), metadata = metadata))
+            }
+            onDropped = { mediaType, reason ->
+                val type = when (mediaType) {
+                    VCSynchronizedMediaTypeVideo -> MediaType.VIDEO
+                    VCSynchronizedMediaTypeDepth -> MediaType.DEPTH
+                    else -> MediaType.OTHER
+                }
+                onFrameDroppedRef.value?.invoke(type, reason)
+            }
+            onEnd = {
+                val frames = pendingFrames.getAndSet(null).orEmpty()
+                val onFrames = onFramesRef.value
+                if (onFrames != null) onFrames(frames) else frames.forEach(::dispose)
             }
         }
-        onFrames(datas)
-    }
 
-    /** Wraps the given synchronized [data] in a [Frame] or a [Depth], or returns `null` if it was dropped. */
-    private fun getSynchronizedFrame(
-        synchronizer: AVCaptureDataOutputSynchronizer,
-        data: AVCaptureSynchronizedData,
-    ): FrameOrDepth? = when (data) {
-        // Video Frame
-        is AVCaptureSynchronizedSampleBufferData -> if (data.sampleBufferWasDropped) {
-            onFrameDropped?.invoke(MediaType.VIDEO, data.droppedReason)
-            null
-        } else {
-            getSynchronizedVideoFrame(synchronizer, data)
+        /** Disposes a frame that nobody will receive. */
+        fun dispose(frame: FrameOrDepth) = when (frame) {
+            is Frame -> frame.dispose()
+            is Depth -> frame.dispose()
         }
-        // Depth Frame
-        is AVCaptureSynchronizedDepthData -> if (data.depthDataWasDropped) {
-            onFrameDropped?.invoke(MediaType.DEPTH, data.droppedReason)
-            null
-        } else {
-            getSynchronizedDepthFrame(synchronizer, data)
-        }
-        // ????? Frame
-        else -> {
-            Logger.error("SynchronizedOutputDelegate received an unknown data type! $data")
-            null
-        }
-    }
 
-    private inline fun <reified T : AVCaptureOutput> getConnectedOutput(
-        synchronizer: AVCaptureDataOutputSynchronizer,
-    ): T = synchronizer.dataOutputs.filterIsInstance<T>().firstOrNull()
-        ?: throw VisionCameraException(
-            "AVCaptureDataOutputSynchronizer does not contain an output of type ${T::class.simpleName}!",
-        )
-
-    private fun getConnection(output: AVCaptureOutput, mediaType: String?): AVCaptureConnection =
-        output.connectionWithMediaType(mediaType)
-            ?: throw VisionCameraException("$output does not have a $mediaType connection!")
-
-    private fun getSynchronizedVideoFrame(
-        synchronizer: AVCaptureDataOutputSynchronizer,
-        data: AVCaptureSynchronizedSampleBufferData,
-    ): Frame {
-        val videoOutput = getConnectedOutput<AVCaptureVideoDataOutput>(synchronizer)
-        val connection = getConnection(videoOutput, AVMediaTypeVideo)
-        val buffer = data.sampleBuffer ?: throw VisionCameraException("$data does not contain a sample buffer!")
-        val metadata = MediaSampleMetadata.fromConnection(timestamp = data.timestamp, connection = connection)
-        return IosFrame(buffer = buffer, metadata = metadata)
-    }
-
-    private fun getSynchronizedDepthFrame(
-        synchronizer: AVCaptureDataOutputSynchronizer,
-        data: AVCaptureSynchronizedDepthData,
-    ): Depth {
-        val depthOutput = getConnectedOutput<AVCaptureDepthDataOutput>(synchronizer)
-        val connection = getConnection(depthOutput, AVMediaTypeDepthData)
-        val metadata = MediaSampleMetadata.fromConnection(timestamp = data.timestamp, connection = connection)
-        return IosDepth(depthData = data.depthData, metadata = metadata)
+        fun metadataOf(timestampValue: Long, timestampScale: Int, connection: AVCaptureConnection) =
+            MediaSampleMetadata.fromConnection(
+                timestamp = CMTimeMake(timestampValue, timestampScale),
+                connection = connection,
+            )
     }
 }
