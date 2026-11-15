@@ -12,6 +12,7 @@ import me.nathanfallet.visioncamera.VisionCameraException
 import me.nathanfallet.visioncamera.barcode.extensions.VisionCoordinateSpace
 import me.nathanfallet.visioncamera.barcode.extensions.barcodeFormatOfVisionSymbology
 import me.nathanfallet.visioncamera.barcode.extensions.isIOSAtLeast
+import me.nathanfallet.visioncamera.barcode.extensions.isSimulator
 import me.nathanfallet.visioncamera.barcode.extensions.resolveVisionFormat
 import me.nathanfallet.visioncamera.barcode.extensions.toBarcodeFormats
 import me.nathanfallet.visioncamera.barcode.extensions.toByteArray
@@ -25,6 +26,8 @@ import platform.CoreImage.CIDataMatrixCodeDescriptor
 import platform.CoreImage.CIPDF417CodeDescriptor
 import platform.CoreImage.CIQRCodeDescriptor
 import platform.CoreImage.createCGImage
+import platform.CoreML.MLCPUComputeDevice
+import platform.CoreML.MLComputeDeviceProtocolProtocol
 import platform.CoreVideo.CVPixelBufferGetHeight
 import platform.CoreVideo.CVPixelBufferGetWidth
 import platform.CoreVideo.CVPixelBufferRef
@@ -33,8 +36,12 @@ import platform.Foundation.NSError
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageOrientation
 import platform.Vision.VNBarcodeObservation
+import platform.Vision.VNComputeStageMain
 import platform.Vision.VNDetectBarcodesRequest
 import platform.Vision.VNImageRequestHandler
+import platform.Vision.VNRequest
+import platform.Vision.setComputeDevice
+import platform.Vision.supportedComputeStageDevicesAndReturnError
 
 /**
  * Detects barcodes with Apple Vision (`VNDetectBarcodesRequest`), and reports them like ML Kit does in V5.
@@ -104,6 +111,7 @@ internal class VisionBarcodeDetector(targetFormats: List<TargetBarcodeFormat>) {
         if (symbologies.isEmpty()) return emptyList()
         val request = VNDetectBarcodesRequest()
         request.symbologies = symbologies
+        if (isSimulator) request.useCPU()
         memScoped {
             val error = alloc<ObjCObjectVar<NSError?>>()
             if (!handler.performRequests(listOf(request), error = error.ptr)) {
@@ -114,6 +122,23 @@ internal class VisionBarcodeDetector(targetFormats: List<TargetBarcodeFormat>) {
         return request.results.orEmpty()
             .filterIsInstance<VNBarcodeObservation>()
             .mapNotNull { it.toBarcode(space) }
+    }
+
+    /**
+     * Runs this request on the CPU. The Simulator has no Neural Engine and may have no usable GPU (e.g. on CI), where
+     * Vision silently detects nothing with its default compute devices.
+     */
+    private fun VNRequest.useCPU() {
+        if (isIOSAtLeast(major = 17)) {
+            val devices = supportedComputeStageDevicesAndReturnError(null)?.get(VNComputeStageMain) as? List<*>
+            val cpu = devices?.firstOrNull { it is MLCPUComputeDevice } as? MLComputeDeviceProtocolProtocol
+            if (cpu != null) {
+                setComputeDevice(cpu, forComputeStage = VNComputeStageMain)
+                return
+            }
+        }
+        @Suppress("DEPRECATION")
+        usesCPUOnly = true
     }
 
     /** Converts this observation to a [Barcode], or returns `null` if its format was not requested. */
