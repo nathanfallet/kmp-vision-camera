@@ -35,7 +35,8 @@ import me.nathanfallet.visioncamera.TorchMode
  * @param isActive Starts the session when `true`, and stops it when `false`.
  * @param modifier The [Modifier] of the preview.
  * @param outputs Additional [CameraOutput]s, besides the preview.
- * @param constraints [Constraint]s the session tries to match, ranked by priority.
+ * @param constraints [Constraint]s the session tries to match, ranked by priority. Like VisionCamera's `Camera`, a
+ * `ResolutionBiasConstraint` for each output is added after them, with a lower priority.
  * @param mirrorMode Whether the outputs are mirrored. [MirrorMode.AUTO] mirrors selfie cameras.
  * @param orientationSource The [OrientationSource] whose orientation is automatically applied to all outputs (see
  * [CameraOutput.outputOrientation]), or `null` to set it yourself (VisionCamera's `'custom'`).

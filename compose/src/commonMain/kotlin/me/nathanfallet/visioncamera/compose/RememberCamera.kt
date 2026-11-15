@@ -28,6 +28,7 @@ import me.nathanfallet.visioncamera.Constraint
 import me.nathanfallet.visioncamera.InterruptionReason
 import me.nathanfallet.visioncamera.MirrorMode
 import me.nathanfallet.visioncamera.OrientationSource
+import me.nathanfallet.visioncamera.ResolutionBiasConstraint
 import me.nathanfallet.visioncamera.TorchMode
 import me.nathanfallet.visioncamera.VisionCamera
 
@@ -52,7 +53,8 @@ import me.nathanfallet.visioncamera.VisionCamera
  * @param device The [me.nathanfallet.visioncamera.CameraDevice] to open, or a
  * [me.nathanfallet.visioncamera.TargetCameraPosition] to use the default device at that position.
  * @param outputs The [CameraOutput]s the [device] streams into.
- * @param constraints [Constraint]s the session tries to match, ranked by priority.
+ * @param constraints [Constraint]s the session tries to match, ranked by priority. Like VisionCamera's `useCamera`, a
+ * [ResolutionBiasConstraint] for each of the [outputs] is added after them, with a lower priority.
  * @param mirrorMode Whether the outputs are mirrored. [MirrorMode.AUTO] mirrors selfie cameras.
  * @param orientationSource The [OrientationSource] whose orientation is automatically applied to all [outputs] (see
  * [CameraOutput.outputOrientation]), or `null` to set it yourself (VisionCamera's `'custom'`).
@@ -154,7 +156,9 @@ fun rememberCamera(
         val connection = CameraSessionConnection(
             input = device,
             outputs = outputs.map { CameraOutputConfiguration(it, mirrorMode) },
-            constraints = constraints,
+            // Like VisionCamera's `useCamera`, bias the format towards each output's resolution, after the user's
+            // constraints (e.g. a 60 FPS preview-sized format rather than an equal 30 FPS one for a depth output).
+            constraints = constraints + outputs.map { ResolutionBiasConstraint(it) },
             initialZoom = currentZoom,
             initialExposureBias = currentExposure,
             onSessionConfigSelected = { currentOnSessionConfigSelected?.invoke(it) },
