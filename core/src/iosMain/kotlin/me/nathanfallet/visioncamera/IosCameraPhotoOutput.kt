@@ -2,13 +2,19 @@ package me.nathanfallet.visioncamera
 
 import kotlinx.cinterop.cValue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import platform.AVFoundation.AVCaptureConnection
+import platform.AVFoundation.AVCapturePhoto
 import platform.AVFoundation.AVCapturePhotoOutput
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.CMVideoDimensionsValue
 import platform.AVFoundation.depthDataDeliverySupported
+import platform.AVFoundation.previewCGImageRepresentation
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSValue
+import platform.UIKit.UIImage
 
 /**
  * The iOS [CameraPhotoOutput], backed by an [AVCapturePhotoOutput] (port of V5's `HybridCameraPhotoOutput.swift`).
@@ -105,7 +111,12 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
         val resultingFormat = photoContainerFormatOf(options.containerFormat)
         val delegate = CapturePhotoDelegate(
             onCaptured = { photo, metadata ->
-                // Wrap the `AVCapturePhoto` in an `IosPhoto` and resolve
+                // 1. Check if we have a Preview Image (if it was requested)
+                val onPreviewImageAvailable = callbacks.onPreviewImageAvailable
+                if (options.previewImageTargetSize != null && onPreviewImageAvailable != null) {
+                    deliverPreviewImage(photo, metadata, onPreviewImageAvailable)
+                }
+                // 2. Wrap the `AVCapturePhoto` in an `IosPhoto` and resolve
                 result.complete(IosPhoto(photo = photo, metadata = metadata, containerFormat = resultingFormat))
             },
             onError = { error -> result.completeExceptionally(error) },
@@ -114,6 +125,25 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
         // 3. Perform capture
         output.capturePhotoWithSettings(captureSettings, delegate)
         return result.await()
+    }
+
+    /**
+     * Decodes the preview image of the given [photo] on a background thread, and delivers it to
+     * [onPreviewImageAvailable]. Nothing is delivered if the photo has no preview image.
+     */
+    private fun deliverPreviewImage(
+        photo: AVCapturePhoto,
+        metadata: MediaSampleMetadata,
+        onPreviewImageAvailable: (Image) -> Unit,
+    ) {
+        previewImageScope.launch {
+            // On a separate Thread, start decoding the Preview Image Data
+            val cgPreviewImage = photo.previewCGImageRepresentation() ?: return@launch
+            // Wrap the `CGImage` in an `IosImage` and notify the callback
+            val orientation = metadata.orientation.toUIImageOrientation(metadata.isMirrored)
+            val uiImage = UIImage.imageWithCGImage(cgPreviewImage, scale = 1.0, orientation = orientation)
+            onPreviewImageAvailable(IosImage(uiImage))
+        }
     }
 
     override suspend fun capturePhotoToFile(
@@ -147,4 +177,9 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
     }
 
     override fun toString(): String = "CameraPhotoOutput($output)"
+
+    private companion object {
+        /** Where preview images are decoded, like V5's `Task { }`. */
+        val previewImageScope = CoroutineScope(Dispatchers.Default)
+    }
 }

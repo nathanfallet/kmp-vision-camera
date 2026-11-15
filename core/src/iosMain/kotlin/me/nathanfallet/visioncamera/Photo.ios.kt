@@ -4,7 +4,7 @@ import platform.UIKit.UIImage
 
 /**
  * Converts this [Photo] to a [UIImage], applying its [Photo.orientation] and [Photo.isMirrored] through the image's
- * `imageOrientation` (V5's `photo.toImage()`).
+ * `imageOrientation`. Same as [Photo.toImage] followed by `Image.toUIImage()`.
  *
  * ```kotlin
  * val image = photoOutput.capturePhoto().use { it.toUIImage() }

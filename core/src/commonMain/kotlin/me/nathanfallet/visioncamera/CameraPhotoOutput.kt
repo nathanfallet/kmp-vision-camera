@@ -21,6 +21,14 @@ data class PhotoOutputOptions(
      * [CameraDevice.supportsSpeedQualityPrioritization].
      */
     val qualityPrioritization: QualityPrioritization = QualityPrioritization.BALANCED,
+    /**
+     * When set, a ready to display [Image] of about this [Size] is delivered to
+     * [CapturePhotoCallbacks.onPreviewImageAvailable] just before the resulting [Photo] is available.
+     *
+     * Preview image delivery requires additional processing, so it is disabled by default (`null`). Keep this size as
+     * small as possible to avoid unnecessary overhead. Requires [CameraDevice.supportsPreviewImage].
+     */
+    val previewImageTargetSize: Size? = null,
 )
 
 /**
@@ -33,6 +41,13 @@ data class CapturePhotoCallbacks(
     val onWillCapturePhoto: (() -> Unit)? = null,
     /** Called right after the pipeline captured the photo. */
     val onDidCapturePhoto: (() -> Unit)? = null,
+    /**
+     * Called with an [Image] suitable for preview or thumbnail updates, before the resulting [Photo] is available.
+     *
+     * Only called if [PhotoOutputOptions.previewImageTargetSize] is set and the [CameraDevice] supports preview images
+     * ([CameraDevice.supportsPreviewImage]). It may be called on a background thread.
+     */
+    val onPreviewImageAvailable: ((previewImage: Image) -> Unit)? = null,
 )
 
 /**

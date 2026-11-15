@@ -1,11 +1,14 @@
 package me.nathanfallet.visioncamera
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 /**
  * A photo captured in memory by [CameraPhotoOutput.capturePhoto].
  *
  * Save it with [saveToFile] or [saveToTemporaryFile], or read its encoded bytes with [getFileData] (e.g. to decode
- * it into an image to display). Platform-specific conversions are also available: `Photo.toBitmap()` on Android and
- * `Photo.toUIImage()` on iOS.
+ * it into an image to display). Convert it to a displayable [Image] with [toImage], or use the platform-specific
+ * conversions: `Photo.toBitmap()` on Android and `Photo.toUIImage()` on iOS.
  *
  * A [Photo] holds native memory: [dispose] it as soon as it is no longer needed. It implements [AutoCloseable], so
  * `use { }` disposes it automatically.
@@ -67,6 +70,17 @@ interface Photo : AutoCloseable {
 
     /** Gets the encoded file data of this photo, after processing and including EXIF metadata. */
     suspend fun getFileData(): ByteArray
+
+    /**
+     * Converts this photo to a decoded [Image], with its [orientation] and mirroring applied. This runs synchronously,
+     * on the calling thread.
+     *
+     * @throws VisionCameraException If this photo cannot be converted (e.g. it is a RAW photo) or was disposed.
+     */
+    fun toImage(): Image
+
+    /** Same as [toImage], but runs on a background dispatcher. */
+    suspend fun toImageAsync(): Image = withContext(Dispatchers.Default) { toImage() }
 
     /** Releases the native memory of this photo. It can no longer be used afterwards. */
     fun dispose()

@@ -116,6 +116,8 @@ internal class IosPhoto(
 
     // Conversion
 
+    override fun toImage(): Image = IosImage(toUIImage())
+
     /**
      * Converts this photo to a [UIImage], with its [orientation] and mirroring applied via `UIImage.imageOrientation`.
      *

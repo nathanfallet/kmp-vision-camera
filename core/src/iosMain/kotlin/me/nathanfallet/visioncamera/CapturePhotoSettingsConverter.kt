@@ -9,13 +9,15 @@ import platform.AVFoundation.AVVideoCompressionPropertiesKey
 import platform.AVFoundation.AVVideoQualityKey
 import platform.AVFoundation.depthDataDeliveryEnabled
 import platform.AVFoundation.depthDataDeliverySupported
+import platform.CoreVideo.kCVPixelBufferHeightKey
+import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
+import platform.CoreVideo.kCVPixelBufferWidthKey
 import platform.Foundation.NSNumber
 import platform.ImageIO.kCGImagePropertyGPSDictionary
 import platform.ImageIO.kCGImagePropertyTIFFDictionary
 import platform.ImageIO.kCGImagePropertyTIFFSoftware
 
-// Port of V5's AV+CapturePhotoSettings.swift. Preview images are not part of the common API yet, so their settings
-// are not ported.
+// Port of V5's AV+CapturePhotoSettings.swift.
 
 /** Whether these settings capture a RAW photo. */
 private val AVCapturePhotoSettings.isRAWFormat: Boolean
@@ -137,6 +139,9 @@ internal fun CapturePhotoSettings.toAVCapturePhotoSettings(
     // enableVirtualDeviceFusion
     if (output.virtualDeviceFusionSupported) settings.autoVirtualDeviceFusionEnabled = enableVirtualDeviceFusion
 
+    // previewImageTargetSize
+    options.previewImageTargetSize?.let { settings.applyPreviewImageTargetSize(it) }
+
     // metadata
     settings.addLibraryMetadataTag()
     location?.let { settings.addLocationMetadataTag(it) }
@@ -179,6 +184,16 @@ private fun applyCameraCalibrationDataDelivery(output: AVCapturePhotoOutput, set
         throw VisionCameraException("`enableCameraCalibrationDataDelivery` requires `enableDepthData` on iOS!")
     }
     settings.cameraCalibrationDataDeliveryEnabled = true
+}
+
+/** Requests a preview image of the given [targetSize], in the default preview pixel format, if there is one. */
+private fun AVCapturePhotoSettings.applyPreviewImageTargetSize(targetSize: Size) {
+    val previewFormat = availablePreviewPhotoPixelFormatTypes.firstOrNull() ?: return
+    previewPhotoFormat = mapOf<Any?, Any?>(
+        kCVPixelBufferPixelFormatTypeKey.toKotlinString() to previewFormat,
+        kCVPixelBufferWidthKey.toKotlinString() to targetSize.width,
+        kCVPixelBufferHeightKey.toKotlinString() to targetSize.height,
+    )
 }
 
 private fun AVCapturePhotoSettings.addLibraryMetadataTag() {

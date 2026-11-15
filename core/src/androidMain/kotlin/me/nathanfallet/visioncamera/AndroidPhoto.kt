@@ -71,6 +71,8 @@ internal class AndroidPhoto(
         if (isDisposed.compareAndSet(false, true)) image.close()
     }
 
+    override fun toImage(): Image = AndroidImage(toBitmap())
+
     /** Converts this photo to a [Bitmap], applying its [orientation] and mirroring. */
     fun toBitmap(): Bitmap {
         // This throws on RAW (DNG) Photos, because CameraX's toBitmap() only supports JPEG, RGB and YUV.
@@ -115,7 +117,7 @@ internal class AndroidPhoto(
 /**
  * Converts this [Photo] to an Android [Bitmap], with its [Photo.orientation] and mirroring applied.
  *
- * It replaces V5's `toImage()`. RAW photos can not be converted.
+ * Same as [Photo.toImage] followed by `Image.toBitmap()`. RAW photos can not be converted.
  *
  * @throws VisionCameraException If this [Photo] was not created by VisionCamera.
  */

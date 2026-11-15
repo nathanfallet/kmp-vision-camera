@@ -37,8 +37,9 @@ photoOutput.capturePhoto().use { photo ->
 }
 ```
 
-To display a photo, convert it with the platform extensions, which apply its orientation and mirroring:
-`photo.toBitmap()` on Android, `photo.toUIImage()` on iOS.
+To display a photo, convert it to an `Image` with `photo.toImage()` (or `toImageAsync()`), which applies its
+orientation and mirroring. Get the native image with `image.toBitmap()` on Android and `image.toUIImage()` on iOS, or
+directly with `photo.toBitmap()` / `photo.toUIImage()`.
 
 On Android, prefer `capturePhotoToFile` for formats other than JPEG: CameraX does not properly support in-memory RAW
 photos yet, so `getFileData` only works for JPEG photos there, and the `HEIC` container format is not supported.
@@ -49,3 +50,16 @@ photos yet, so `getFileData` only works for JPEG photos there, and the `HEIC` co
 sound, red-eye reduction, distortion correction, virtual device fusion and a `Location` to embed in the EXIF
 metadata. `CapturePhotoCallbacks` notifies when the capture begins and when the photo is captured, e.g. to animate a
 shutter.
+
+## Preview image
+
+Set `PhotoOutputOptions.previewImageTargetSize` to receive a small, ready to display `Image` before the photo itself,
+e.g. to update a thumbnail right away. It is delivered to `CapturePhotoCallbacks.onPreviewImageAvailable`, if
+`device.supportsPreviewImage`:
+
+```kotlin
+val photoOutput = VisionCamera.createPhotoOutput(PhotoOutputOptions(previewImageTargetSize = Size(300, 400)))
+val photo = photoOutput.capturePhoto(
+    callbacks = CapturePhotoCallbacks(onPreviewImageAvailable = { image -> showThumbnail(image) }),
+)
+```

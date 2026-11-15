@@ -1,6 +1,7 @@
 package me.nathanfallet.visioncamera
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.media.MediaActionSound
 import android.os.SystemClock
 import android.util.Log
@@ -8,6 +9,7 @@ import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.core.takePicture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +73,11 @@ internal class AndroidPhotoOutput(
             // Capture Mode (Quality, Speed, ...)
             setCaptureMode(options.qualityPrioritization.toCameraXCaptureMode())
             if (isProcessedFormat(outputFormat)) setJpegQuality(jpegQuality())
+            // Preview Image (postview)
+            options.previewImageTargetSize?.let { previewImageTargetSize ->
+                setPostviewEnabled(true)
+                setPostviewResolutionSelector(previewImageTargetSize.toPostviewResolutionSelector())
+            }
         }.build()
 
         return NativeCameraOutput.PreparedUseCase(imageCapture) {
@@ -119,6 +126,11 @@ internal class AndroidPhotoOutput(
         callbacks.onWillCapturePhoto?.invoke()
     }
 
+    private fun onPostviewBitmapAvailable(callbacks: CapturePhotoCallbacks, bitmap: Bitmap) {
+        // Preview Image delivered!
+        callbacks.onPreviewImageAvailable?.invoke(AndroidImage(bitmap))
+    }
+
     override suspend fun capturePhoto(
         settings: CapturePhotoSettings,
         callbacks: CapturePhotoCallbacks,
@@ -142,7 +154,7 @@ internal class AndroidPhotoOutput(
                     didFireOnDidCapturePhoto = true
                 }
             },
-            // Preview images (postview) are not supported yet.
+            { bitmap -> onPostviewBitmapAvailable(callbacks, bitmap) },
         )
         // Not every device supports progress callbacks, so we just fire it later here
         if (!didFireOnDidCapturePhoto) callbacks.onDidCapturePhoto?.invoke()
@@ -186,7 +198,7 @@ internal class AndroidPhotoOutput(
                     didFireOnDidCapturePhoto = true
                 }
             },
-            // Preview images (postview) are not supported yet.
+            { bitmap -> onPostviewBitmapAvailable(callbacks, bitmap) },
         )
         // Not every device supports progress callbacks, so we just fire it later here
         if (!didFireOnDidCapturePhoto) callbacks.onDidCapturePhoto?.invoke()
@@ -207,3 +219,11 @@ internal class AndroidPhotoOutput(
         const val CAPTURE_PROGRESS_COMPLETE = 100
     }
 }
+
+/** A [ResolutionSelector] choosing the postview resolution closest to this [Size] (V5's `toResolutionSelector()`). */
+private fun Size.toPostviewResolutionSelector(): ResolutionSelector = ResolutionSelector.Builder()
+    .setResolutionStrategy(
+        ResolutionStrategy(toAndroidSize(), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER),
+    )
+    .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+    .build()
