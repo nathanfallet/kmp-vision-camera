@@ -27,8 +27,10 @@ dependencies {
     dokka(projects.core)
     dokka(projects.compose)
     dokka(projects.barcode)
+    dokka(projects.barcodeCompose)
 
     kover(projects.core)
     kover(projects.compose)
     kover(projects.barcode)
+    kover(projects.barcodeCompose)
 }

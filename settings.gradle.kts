@@ -41,6 +41,9 @@ include(":compose")
 // The optional barcode scanning module (me.nathanfallet.visioncamera.barcode), port of V5's barcode-scanner package.
 include(":barcode")
 
+// The optional Compose integration of the barcode module (me.nathanfallet.visioncamera.barcode.compose).
+include(":barcode-compose")
+
 // The demo app: shared Compose UI, and its thin Android application (AGP 9 needs the application plugin in its own
 // module). The iOS app is the Xcode project in sample-ios. Not published.
 include(":sample")

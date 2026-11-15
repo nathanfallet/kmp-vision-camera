@@ -52,7 +52,7 @@ Early development. What works today:
 - [x] Frame output (frame processing) with native buffers, frame renderer and frame converter
 - [x] Depth output, object output (iOS) and output synchronizer (iOS)
 - [x] Automatic output orientation (device or interface), subject area changes
-- [ ] Barcode scanner (`barcode`): Android done, iOS and Compose helpers in progress
+- [x] Barcode scanner (`barcode`, `barcode-compose`): frames, images, camera output and `CodeScanner`
 - [ ] Location, resizer, Skia
 
 ## Modules
@@ -61,7 +61,8 @@ Early development. What works today:
 |---|---|
 | `core` | The camera engine: devices, sessions, controller, preview, photo, video, frame, depth and object outputs |
 | `compose` | Compose Multiplatform integration: `Camera`, `NativePreviewView`, `NativeFrameRendererView`, `remember*` |
-| `barcode` | Barcode scanning on frames, images or as a camera output (in progress) |
+| `barcode` | Barcode scanning on frames, images or as a camera output |
+| `barcode-compose` | Compose integration of `barcode`: `CodeScanner`, `rememberBarcodeScanner`, `rememberBarcodeScannerOutput` |
 
 ## Installation
 
@@ -74,6 +75,8 @@ dependencies {
     implementation("me.nathanfallet.visioncamera:compose:0.1.0")
     // Optional, for barcode scanning:
     implementation("me.nathanfallet.visioncamera:barcode:0.1.0")
+    // Optional, for barcode scanning with Compose Multiplatform:
+    implementation("me.nathanfallet.visioncamera:barcode-compose:0.1.0")
 }
 ```
 
@@ -138,15 +141,23 @@ Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(fra
 ### Barcode scanning
 
 ```kotlin
-val barcodeOutput = remember {
-    createBarcodeScannerOutput(
-        BarcodeScannerOutputOptions(
-            barcodeFormats = listOf(TargetBarcodeFormat.QR_CODE, TargetBarcodeFormat.EAN_13),
-            onBarcodeScanned = { barcodes -> barcodes.forEach { println(it.rawValue) } },
-            onError = { println(it) },
-        ),
-    )
-}
+CodeScanner(
+    isActive = true,
+    barcodeFormats = listOf(TargetBarcodeFormat.QR_CODE, TargetBarcodeFormat.EAN_13),
+    onBarcodeScanned = { barcodes -> barcodes.forEach { println(it.rawValue) } },
+    onError = { println(it) },
+    modifier = Modifier.fillMaxSize(),
+)
+```
+
+Or, as an output of your own `Camera` (or with `rememberBarcodeScanner` in a frame processor):
+
+```kotlin
+val barcodeOutput = rememberBarcodeScannerOutput(
+    barcodeFormats = listOf(TargetBarcodeFormat.ALL_FORMATS),
+    onBarcodeScanned = { barcodes -> barcodes.forEach { println("${it.format}: ${it.rawValue}") } },
+    onError = { println(it) },
+)
 Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(barcodeOutput))
 ```
 
