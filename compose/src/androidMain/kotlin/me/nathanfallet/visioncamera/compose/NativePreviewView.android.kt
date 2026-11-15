@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.viewinterop.AndroidView
 import me.nathanfallet.visioncamera.CameraPreviewOutput
 import me.nathanfallet.visioncamera.GestureController
+import me.nathanfallet.visioncamera.Image
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.PreviewImplementationMode
@@ -68,4 +69,6 @@ private class AndroidPreviewViewHandle(private val view: PreviewView) : PreviewV
 
     override fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
         view.convertScannedObjectCoordinatesToViewCoordinates(scannedObject)
+
+    override suspend fun takeSnapshot(): Image = view.takeSnapshot()
 }

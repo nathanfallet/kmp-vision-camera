@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
+import me.nathanfallet.visioncamera.Image
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.ScannedObject
@@ -20,6 +21,8 @@ internal interface PreviewViewHandle {
     fun convertViewPointToCameraPoint(viewPoint: Offset): Point
 
     fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject
+
+    suspend fun takeSnapshot(): Image
 }
 
 /**
@@ -72,6 +75,13 @@ class PreviewViewRef internal constructor() {
      */
     fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
         requireHandle().convertScannedObjectCoordinatesToViewCoordinates(scannedObject)
+
+    /**
+     * Takes a snapshot of the preview's current contents, and returns it as an [Image]. Android only, like V5.
+     *
+     * @throws VisionCameraException If the preview is not ready yet, has no contents to snapshot, or on iOS.
+     */
+    suspend fun takeSnapshot(): Image = requireHandle().takeSnapshot()
 }
 
 /**

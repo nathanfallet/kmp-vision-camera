@@ -10,6 +10,8 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.camera.view.TransformExperimental
 import androidx.lifecycle.Observer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.camera.view.PreviewView as CameraXPreviewView
 
 /**
@@ -26,6 +28,7 @@ import androidx.camera.view.PreviewView as CameraXPreviewView
  * View coordinates ([createMeteringPoint], [convertCameraPointToViewPoint], [convertViewPointToCameraPoint]) are in
  * pixels, relative to this view, like the coordinates of a [MotionEvent].
  */
+@Suppress("TooManyFunctions")
 class PreviewView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -132,6 +135,18 @@ class PreviewView @JvmOverloads constructor(
             factory.createPoint(viewX.toFloat(), viewY.toFloat())
         }
         return AndroidMeteringPoint(viewX, viewY, size, meteringPoint)
+    }
+
+    /**
+     * Takes a snapshot of this view's current contents, and returns it as an [Image] (e.g. for a fast capture when a
+     * full photo is not needed). It runs on the main thread.
+     *
+     * @throws VisionCameraException If this view isn't ready yet, or has no contents to snapshot.
+     */
+    suspend fun takeSnapshot(): Image = withContext(Dispatchers.Main) {
+        val bitmap = cameraXPreviewView.bitmap
+            ?: throw VisionCameraException("Cannot take snapshot - PreviewView isn't ready yet!")
+        AndroidImage(bitmap)
     }
 
     /**

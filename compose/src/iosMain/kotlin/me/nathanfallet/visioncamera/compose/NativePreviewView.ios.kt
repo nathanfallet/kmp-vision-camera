@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.UIKitView
 import me.nathanfallet.visioncamera.CameraPreviewOutput
 import me.nathanfallet.visioncamera.GestureController
+import me.nathanfallet.visioncamera.Image
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.PreviewImplementationMode
@@ -75,4 +76,6 @@ private class IosPreviewViewHandle(private val view: PreviewView, private val de
 
     override fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
         view.convertScannedObjectCoordinatesToViewCoordinates(scannedObject).scaled(density.toDouble())
+
+    override suspend fun takeSnapshot(): Image = view.takeSnapshot()
 }

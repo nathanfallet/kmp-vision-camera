@@ -135,6 +135,15 @@ class PreviewView : UIView {
     }
 
     /**
+     * Takes a snapshot of this view's current contents. Like V5, this is not available on iOS: an
+     * `AVCaptureVideoPreviewLayer` cannot be snapshotted.
+     *
+     * @throws VisionCameraException Always, on iOS.
+     */
+    @Suppress("RedundantSuspendModifier") // Matches the Android signature.
+    suspend fun takeSnapshot(): Image = throw VisionCameraException("takeSnapshot() is not available on iOS!")
+
+    /**
      * Converts the given [cameraPoint] in camera sensor coordinates into a [Point] in view coordinates, relative to
      * this view.
      *

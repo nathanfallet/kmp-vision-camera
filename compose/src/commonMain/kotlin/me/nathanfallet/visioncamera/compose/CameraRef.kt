@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.FocusOptions
+import me.nathanfallet.visioncamera.Image
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.ScannedObject
@@ -67,6 +68,9 @@ class CameraRef internal constructor() {
     /** See [PreviewViewRef.createMeteringPoint]. */
     fun createMeteringPoint(viewPoint: Offset, size: Float? = null): MeteringPoint =
         preview.createMeteringPoint(viewPoint, size)
+
+    /** See [PreviewViewRef.takeSnapshot]. */
+    suspend fun takeSnapshot(): Image = preview.takeSnapshot()
 
     /** See [PreviewViewRef.convertCameraPointToViewPoint]. */
     fun convertCameraPointToViewPoint(cameraPoint: Point): Offset = preview.convertCameraPointToViewPoint(cameraPoint)
