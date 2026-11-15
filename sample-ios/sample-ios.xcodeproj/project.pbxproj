@@ -300,6 +300,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "VisionCamera";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The sample shows the camera preview.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The sample asks for the microphone to show the permission flow.";
@@ -326,6 +327,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "VisionCamera";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The sample shows the camera preview.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The sample asks for the microphone to show the permission flow.";
