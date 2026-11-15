@@ -34,7 +34,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraDevice
-import me.nathanfallet.visioncamera.FPSConstraint
 import me.nathanfallet.visioncamera.MediaType
 import me.nathanfallet.visioncamera.Recorder
 import me.nathanfallet.visioncamera.TargetCameraPosition
@@ -120,7 +119,6 @@ fun CameraScreen() {
             },
             objectOutput,
         ),
-        constraints = listOf(FPSConstraint(30.0)),
         zoom = zoom,
         torchMode = torchMode,
         onStarted = {
