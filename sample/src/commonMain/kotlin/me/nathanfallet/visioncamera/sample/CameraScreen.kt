@@ -1,5 +1,6 @@
 package me.nathanfallet.visioncamera.sample
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilledTonalButton
@@ -20,26 +22,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraDevice
 import me.nathanfallet.visioncamera.FPSConstraint
+import me.nathanfallet.visioncamera.Recorder
 import me.nathanfallet.visioncamera.TargetCameraPosition
 import me.nathanfallet.visioncamera.TorchMode
 import me.nathanfallet.visioncamera.compose.NativePreviewView
 import me.nathanfallet.visioncamera.compose.rememberCamera
 import me.nathanfallet.visioncamera.compose.rememberCameraDevice
 import me.nathanfallet.visioncamera.compose.rememberCameraDevices
+import me.nathanfallet.visioncamera.compose.rememberGestureControllers
+import me.nathanfallet.visioncamera.compose.rememberPhotoOutput
 import me.nathanfallet.visioncamera.compose.rememberPreviewOutput
+import me.nathanfallet.visioncamera.compose.rememberVideoOutput
+import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
 /**
- * The camera screen: a full-screen preview with controls to switch devices, zoom, toggle the torch and pause the
- * session.
+ * The camera screen: a full-screen preview with tap-to-focus, and controls to take photos, record videos, switch
+ * devices, zoom, toggle the torch and pause the session.
  */
 @Composable
 fun CameraScreen() {
@@ -51,14 +63,20 @@ fun CameraScreen() {
     var isRunning by remember { mutableStateOf(false) }
     var showDevices by remember { mutableStateOf(false) }
     var lastError by remember { mutableStateOf<String?>(null) }
+    var thumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
+    var recorder by remember { mutableStateOf<Recorder?>(null) }
+    var lastVideo by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     val defaultDevice = rememberCameraDevice(position)
     val device = selectedDevice ?: defaultDevice
     val previewOutput = rememberPreviewOutput()
+    val photoOutput = rememberPhotoOutput()
+    val videoOutput = rememberVideoOutput()
     val controller = rememberCamera(
         isActive = isActive,
         device = device ?: position,
-        outputs = listOf(previewOutput),
+        outputs = listOf(previewOutput, photoOutput, videoOutput),
         constraints = listOf(FPSConstraint(30.0)),
         zoom = zoom,
         torchMode = torchMode,
@@ -71,13 +89,29 @@ fun CameraScreen() {
     )
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        NativePreviewView(previewOutput = previewOutput, modifier = Modifier.fillMaxSize())
+        val gestureControllers = rememberGestureControllers(
+            controller = controller,
+            enableNativeTapToFocusGesture = true,
+            enableNativeZoomGesture = false, // The zoom is controlled by the slider below.
+        )
+        NativePreviewView(
+            previewOutput = previewOutput,
+            modifier = Modifier.fillMaxSize(),
+            gestureControllers = gestureControllers,
+        )
 
         Column(
             modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            StatusPanel(device = device, controller = controller, isRunning = isRunning, error = lastError)
+            StatusPanel(
+                device = device,
+                controller = controller,
+                isRunning = isRunning,
+                isRecording = recorder != null,
+                lastVideo = lastVideo,
+                error = lastError,
+            )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (showDevices) {
                     DeviceList(
@@ -88,6 +122,52 @@ fun CameraScreen() {
                             showDevices = false
                         },
                     )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilledTonalButton(
+                        onClick = {
+                            scope.launch {
+                                attempt(onError = { lastError = it }) {
+                                    thumbnail = photoOutput.capturePhoto().use { it.toThumbnail() }
+                                }
+                            }
+                        },
+                        enabled = controller != null,
+                    ) { Text("Photo") }
+                    FilledTonalButton(
+                        onClick = {
+                            scope.launch {
+                                attempt(onError = { lastError = it }) {
+                                    val current = recorder
+                                    if (current != null) {
+                                        current.stopRecording()
+                                    } else {
+                                        val newRecorder = videoOutput.createRecorder()
+                                        newRecorder.startRecording(
+                                            onRecordingFinished = { filePath, _ ->
+                                                lastVideo = filePath
+                                                recorder = null
+                                            },
+                                            onRecordingError = {
+                                                lastError = it.message ?: it.toString()
+                                                recorder = null
+                                            },
+                                        )
+                                        recorder = newRecorder
+                                    }
+                                }
+                            }
+                        },
+                        enabled = controller != null,
+                    ) { Text(if (recorder != null) "Stop" else "Record") }
+                    thumbnail?.let {
+                        Image(
+                            bitmap = it,
+                            contentDescription = "Last photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(56.dp).clip(MaterialTheme.shapes.small),
+                        )
+                    }
                 }
                 if (controller != null) {
                     ZoomSlider(controller = controller, zoom = zoom ?: controller.zoom, onZoomChange = { zoom = it })
@@ -115,7 +195,15 @@ fun CameraScreen() {
 }
 
 @Composable
-private fun StatusPanel(device: CameraDevice?, controller: CameraController?, isRunning: Boolean, error: String?) {
+@Suppress("LongParameterList")
+private fun StatusPanel(
+    device: CameraDevice?,
+    controller: CameraController?,
+    isRunning: Boolean,
+    isRecording: Boolean,
+    lastVideo: String?,
+    error: String?,
+) {
     Column(
         modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), MaterialTheme.shapes.medium).padding(12.dp),
     ) {
@@ -129,6 +217,8 @@ private fun StatusPanel(device: CameraDevice?, controller: CameraController?, is
         if (controller != null) {
             Text("Zoom: ${controller.displayableZoomFactor.format()}x", color = Color.White)
         }
+        if (isRecording) Text("● Recording", color = Color.Red)
+        if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
         if (error != null) Text("Error: $error", color = Color.Red)
     }
 }
@@ -159,6 +249,18 @@ private fun DeviceList(selected: CameraDevice?, onSelect: (CameraDevice) -> Unit
                 }
             }
         }
+    }
+}
+
+/** Runs [block], reporting its failures (but not cancellations) to [onError]. */
+@Suppress("TooGenericExceptionCaught")
+private suspend fun attempt(onError: (String) -> Unit, block: suspend () -> Unit) {
+    try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        onError(e.message ?: e.toString())
     }
 }
 
