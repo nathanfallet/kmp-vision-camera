@@ -64,7 +64,10 @@ interface CameraController {
     val displayableZoomFactor: Double
 
     /**
-     * Sets the zoom to the given value, clamped between [minZoom] and [maxZoom].
+     * Sets the zoom to the given value.
+     *
+     * @throws VisionCameraException if the [device] does not support the given [zoom] value (see [minZoom] and
+     * [maxZoom]).
      */
     suspend fun setZoom(zoom: Double)
 
@@ -87,8 +90,10 @@ interface CameraController {
     val exposureBias: Double
 
     /**
-     * Biases the auto-exposure by the given value in EV units, clamped between [CameraDevice.minExposureBias] and
-     * [CameraDevice.maxExposureBias]. Requires [CameraDevice.supportsExposureBias].
+     * Biases the auto-exposure by the given value in EV units. Requires [CameraDevice.supportsExposureBias].
+     *
+     * @throws VisionCameraException if the given [exposure] is not between [CameraDevice.minExposureBias] and
+     * [CameraDevice.maxExposureBias] (iOS).
      */
     suspend fun setExposureBias(exposure: Double)
 

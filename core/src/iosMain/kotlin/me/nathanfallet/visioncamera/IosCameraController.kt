@@ -121,10 +121,16 @@ internal class IosCameraController(
 
     override suspend fun setZoom(zoom: Double) = captureDevice.withLock(queue) {
         val device = captureDevice
-        // 1. Clamp zoom within the device's valid range
-        val clamped = zoom.coerceIn(device.minAvailableVideoZoomFactor, device.maxAvailableVideoZoomFactor)
+        // 1. Ensure zoom is within valid range
+        if (zoom < device.minAvailableVideoZoomFactor || zoom > device.maxAvailableVideoZoomFactor) {
+            throw VisionCameraException(
+                "`zoom` is not within the device's `minZoom` and `maxZoom` range! (Received: $zoom, " +
+                    "`device.minZoom`: ${device.minAvailableVideoZoomFactor}, " +
+                    "`device.maxZoom`: ${device.maxAvailableVideoZoomFactor})",
+            )
+        }
         // 2. Clamp zoom to the active format's max zoom (might be slightly smaller than device max zoom)
-        val clampedForFormat = minOf(clamped, device.activeFormat.videoMaxZoomFactor)
+        val clampedForFormat = minOf(zoom, device.activeFormat.videoMaxZoomFactor)
         // 3. Apply zoom
         device.videoZoomFactor = clampedForFormat
     }
@@ -196,10 +202,17 @@ internal class IosCameraController(
 
     override suspend fun setExposureBias(exposure: Double) = captureDevice.withLock(queue) { resolve, _ ->
         val device = captureDevice
-        // 1. Clamp exposure bias within the device's valid range
-        val clamped = exposure.toFloat().coerceIn(device.minExposureTargetBias, device.maxExposureTargetBias)
+        // 1. Ensure exposureBias is within range
+        val bias = exposure.toFloat()
+        if (bias < device.minExposureTargetBias || bias > device.maxExposureTargetBias) {
+            throw VisionCameraException(
+                "`exposure` is not within the device's `minExposureBias` and `maxExposureBias` range! " +
+                    "(Received: $bias, `device.minExposureBias`: ${device.minExposureTargetBias}, " +
+                    "`device.maxExposureBias`: ${device.maxExposureTargetBias})",
+            )
+        }
         // 2. Set Exposure Bias, and resolve once it has been applied
-        device.setExposureTargetBias(clamped) { _ -> resolve() }
+        device.setExposureTargetBias(bias) { _ -> resolve() }
     }
 
     // Focus

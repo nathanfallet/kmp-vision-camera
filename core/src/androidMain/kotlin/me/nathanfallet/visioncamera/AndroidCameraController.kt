@@ -61,7 +61,14 @@ internal class AndroidCameraController(
     override val displayableZoomFactor: Double get() = zoom * camera.cameraInfo.intrinsicZoomRatio
 
     override suspend fun setZoom(zoom: Double) = withContext(Dispatchers.Main) {
-        camera.cameraControl.setZoomRatio(zoom.coerceIn(minZoom, maxZoom).toFloat()).await()
+        val zoomState = camera.cameraInfo.zoomState.value
+        if (zoomState != null && (zoom < zoomState.minZoomRatio || zoom > zoomState.maxZoomRatio)) {
+            throw VisionCameraException(
+                "`zoom` is out of range! Expected value within " +
+                    "${zoomState.minZoomRatio}...${zoomState.maxZoomRatio}, received $zoom.",
+            )
+        }
+        camera.cameraControl.setZoomRatio(zoom.toFloat()).await()
         Unit
     }
 
