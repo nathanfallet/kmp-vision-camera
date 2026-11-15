@@ -1,6 +1,8 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.SourcesJar
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -84,6 +86,115 @@ kotlin {
             api(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.process)
         }
+    }
+}
+
+/**
+ * Compiles the JNI sources of src/androidMain/cpp into libVisionCamera.so for every Android ABI, with the NDK's clang.
+ *
+ * The Kotlin Multiplatform Android library plugin has no externalNativeBuild, so the library is built by this task
+ * and added to the variant's jniLibs (see androidComponents below), which packages it in the AAR's jni/<abi>/.
+ * The sources only use the NDK's C APIs (no C++ standard library), hence -nostdlib++: no libc++_shared.so to ship.
+ */
+@CacheableTask
+abstract class BuildNativeLibrariesTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    /** The Android SDK, containing the NDK in ndk/<ndkVersion>. */
+    @get:Internal
+    abstract val sdkDirectory: DirectoryProperty
+
+    @get:Input
+    abstract val ndkVersion: Property<String>
+
+    @get:Input
+    abstract val minSdk: Property<Int>
+
+    @get:Input
+    abstract val libraryName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
+    @TaskAction
+    fun build() {
+        val ndk = sdkDirectory.get().asFile.resolve("ndk/${ndkVersion.get()}")
+        if (!ndk.isDirectory) {
+            throw GradleException(
+                "NDK ${ndkVersion.get()} is not installed in $ndk, install it with: " +
+                    "sdkmanager --install \"ndk;${ndkVersion.get()}\"",
+            )
+        }
+        val prebuilt = ndk.resolve("toolchains/llvm/prebuilt").listFiles()?.singleOrNull { it.isDirectory }
+            ?: throw GradleException("No LLVM toolchain found in the NDK at $ndk")
+        val clang = listOf("clang++", "clang++.exe").map { prebuilt.resolve("bin/$it") }.firstOrNull { it.exists() }
+            ?: throw GradleException("clang++ not found in $prebuilt")
+        val output = outputDirectory.get().asFile
+        output.deleteRecursively()
+        val library = "lib${libraryName.get()}.so"
+        ABI_TARGETS.forEach { (abi, target) ->
+            val abiDirectory = output.resolve(abi).apply { mkdirs() }
+            execOperations.exec {
+                executable = clang.absolutePath
+                args(
+                    "--target=$target${minSdk.get()}",
+                    "-std=c++20",
+                    "-O2",
+                    "-fPIC",
+                    "-Wall",
+                    "-Wextra",
+                    "-Werror",
+                    "-fstack-protector-all",
+                    "-fno-exceptions",
+                    "-fno-rtti",
+                    "-nostdlib++",
+                    "-shared",
+                    "-Wl,-soname,$library",
+                    // 16 KB page sizes support (Android 15+)
+                    "-Wl,-z,max-page-size=16384",
+                    "-Wl,--no-undefined",
+                    "-Wl,--build-id=sha1",
+                    "-o",
+                    abiDirectory.resolve(library).absolutePath,
+                )
+                args(sources.files.filter { it.extension == "cpp" }.sorted().map { it.absolutePath })
+                args("-landroid", "-llog")
+            }
+        }
+    }
+
+    private companion object {
+        /** The Android ABIs, and their clang target triple (the API level is appended). */
+        val ABI_TARGETS = mapOf(
+            "arm64-v8a" to "aarch64-linux-android",
+            "armeabi-v7a" to "armv7a-linux-androideabi",
+            "x86_64" to "x86_64-linux-android",
+            "x86" to "i686-linux-android",
+        )
+    }
+}
+
+val buildNativeLibraries = tasks.register<BuildNativeLibrariesTask>("buildNativeLibraries") {
+    description = "Compiles libVisionCamera.so (JNI) for every Android ABI with the NDK."
+    sources.from(fileTree("src/androidMain/cpp"))
+    // Pinned (gradle/libs.versions.toml), since the Kotlin Multiplatform Android library DSL has no ndkVersion.
+    sdkDirectory.set(androidComponents.sdkComponents.sdkDirectory)
+    ndkVersion.set(libs.versions.android.ndk)
+    minSdk.set(libs.versions.android.minSdk.get().toInt())
+    libraryName.set("VisionCamera")
+    outputDirectory.set(layout.buildDirectory.dir("generated/jniLibs"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        val jniLibs = variant.sources.jniLibs
+            ?: throw GradleException("The ${variant.name} variant has no jniLibs sources to add libVisionCamera.so to")
+        jniLibs.addGeneratedSourceDirectory(buildNativeLibraries, BuildNativeLibrariesTask::outputDirectory)
     }
 }
 

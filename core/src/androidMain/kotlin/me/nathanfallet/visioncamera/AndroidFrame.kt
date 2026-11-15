@@ -47,15 +47,14 @@ internal class AndroidFrame(
     override val hasPixelBuffer: Boolean
         get() = image.hasPixelBuffer
 
-    // Getting the AHardwareBuffer* of an Image requires JNI, which this library does not ship.
     override val hasNativeBuffer: Boolean
-        get() = false
+        get() = image.hasNativeBuffer
 
     // Limitation: Implement `cameraIntrinsicMatrix`
     override val cameraIntrinsicMatrix: List<Double>?
         get() = null
 
-    override fun getNativeBuffer(): NativeBuffer = throw nativeBufferUnavailable()
+    override fun getNativeBuffer(): NativeBuffer = image.getNativeBuffer()
 
     override fun getPlanes(): List<FramePlane> {
         requireValid()
@@ -90,9 +89,3 @@ internal class AndroidFrame(
         if (!isValid) throw VisionCameraException("This Frame is not valid anymore, it has been disposed!")
     }
 }
-
-/** The error thrown by `getNativeBuffer()`, as Android `NativeBuffer`s are not available yet. */
-internal fun nativeBufferUnavailable(): VisionCameraException = VisionCameraException(
-    "NativeBuffers (AHardwareBuffer*) are not available on Android yet: they require native (JNI) code, which " +
-        "this library does not ship. Use getPixelBuffer() or getPlanes() to access the pixels on the CPU.",
-)

@@ -15,6 +15,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 21
+      - name: Install the NDK (for core's JNI library)
+        run: |
+          NDK_VERSION=$(sed -n 's/^android-ndk = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
       - name: Build, lint and test (Android + common)
         run: ./gradlew build
       - name: Generate coverage reports

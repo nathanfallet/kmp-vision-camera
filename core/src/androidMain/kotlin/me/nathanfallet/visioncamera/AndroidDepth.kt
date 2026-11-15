@@ -59,8 +59,7 @@ internal class AndroidDepth(
         return image.getPixelBytes()
     }
 
-    // Getting the AHardwareBuffer* of an Image requires JNI, which this library does not ship.
-    override fun getNativeBuffer(): NativeBuffer = throw nativeBufferUnavailable()
+    override fun getNativeBuffer(): NativeBuffer = image.getNativeBuffer()
 
     override fun rotate(orientation: CameraOrientation, isMirrored: Boolean): Depth {
         // Limitation: On Android this is simply not supported.

@@ -8,6 +8,8 @@ maven = "0.37.0"
 android-compileSdk = "36"
 android-minSdk = "26"
 android-targetSdk = "36"
+# The NDK compiling core's JNI library (libVisionCamera.so): AGP 9.4's default NDK, also installed in CI.
+android-ndk = "28.2.13676358"
 compose-multiplatform = "1.11.1"
 compose-material3 = "1.9.0"
 kotlinx-coroutines = "1.11.0"
