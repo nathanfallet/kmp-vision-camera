@@ -84,7 +84,7 @@ private enum class StreamMode {
  * frames or depth, scan barcodes, switch devices, zoom, toggle the torch and pause the session.
  */
 @Composable
-fun CameraScreen() {
+fun CameraScreen(onOpenSkia: () -> Unit) {
     var position by remember { mutableStateOf(TargetCameraPosition.BACK) }
     var selectedDevice by remember { mutableStateOf<CameraDevice?>(null) }
     var isActive by remember { mutableStateOf(true) }
@@ -242,6 +242,7 @@ fun CameraScreen() {
                         },
                         enabled = controller != null && streamMode == StreamMode.VIDEO,
                     ) { Text(if (recorder != null) "Stop" else "Record") }
+                    FilledTonalButton(onClick = onOpenSkia, enabled = recorder == null) { Text("Skia") }
                     thumbnail?.let {
                         Image(
                             bitmap = it,

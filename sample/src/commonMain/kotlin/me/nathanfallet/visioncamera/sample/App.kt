@@ -11,7 +11,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -27,8 +31,13 @@ fun App() {
     MaterialTheme(colorScheme = darkColorScheme()) {
         Surface(modifier = Modifier.fillMaxSize()) {
             val permission = rememberCameraPermission()
+            var showSkia by remember { mutableStateOf(false) }
             if (permission.hasPermission) {
-                CameraScreen()
+                if (showSkia) {
+                    SkiaScreen(onClose = { showSkia = false })
+                } else {
+                    CameraScreen(onOpenSkia = { showSkia = true })
+                }
             } else {
                 PermissionScreen(
                     canRequestPermission = permission.canRequestPermission,
