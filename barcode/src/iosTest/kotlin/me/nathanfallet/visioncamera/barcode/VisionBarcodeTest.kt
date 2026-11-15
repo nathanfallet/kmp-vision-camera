@@ -23,6 +23,7 @@ import platform.CoreImage.CIFilter
 import platform.CoreImage.CIImage
 import platform.CoreImage.createCGImage
 import platform.CoreImage.filterWithName
+import platform.CoreImage.kCIContextUseSoftwareRenderer
 import platform.CoreVideo.CVPixelBufferCreate
 import platform.CoreVideo.CVPixelBufferRef
 import platform.CoreVideo.CVPixelBufferRefVar
@@ -76,10 +77,11 @@ class VisionBarcodeTest {
     fun coordinateSpaceConvertsVisionCoordinates() {
         // A 1920x1080 landscape buffer, shown upright in portrait (rotated 90° clockwise).
         val space = VisionCoordinateSpace(UIImageOrientation.UIImageOrientationRight, width = 1920.0, height = 1080.0)
-        // Vision's origin is the upright bottom-left corner, which is the buffer's top-left corner.
+        // The buffer's top row is the upright image's right column, so Vision's origin (the upright bottom-left
+        // corner) is the buffer's bottom-right corner.
         val origin = space.convert(0.0, 0.0)
-        assertEquals(0.0, origin.x, 1e-9)
-        assertEquals(0.0, origin.y, 1e-9)
+        assertEquals(1920.0, origin.x, 1e-9)
+        assertEquals(1080.0, origin.y, 1e-9)
         // Upright u ∈ [0.25, 0.75], Vision y ∈ [0.5, 0.75] (so top-left origin v ∈ [0.25, 0.5])
         // -> buffer x = v ∈ [0.25, 0.5], buffer y = 1 - u ∈ [0.25, 0.75].
         val rect = space.convert(CGRectMake(0.25, 0.5, 0.5, 0.25))
@@ -157,9 +159,12 @@ class VisionBarcodeTest {
             .imageByCompositingOverImage(background)
     }
 
+    /** A software Core Image context: CI machines (e.g. GitHub's macOS runners) have no GPU for the simulator. */
+    private val renderContext = CIContext.contextWithOptions(mapOf<Any?, Any?>(kCIContextUseSoftwareRenderer to true))
+
     private fun renderCGImage(image: CIImage): CGImageRef {
         val rect = CGRectMake(0.0, 0.0, SCENE_WIDTH, SCENE_HEIGHT)
-        return assertNotNull(CIContext.contextWithOptions(null).createCGImage(image, fromRect = rect))
+        return assertNotNull(renderContext.createCGImage(image, fromRect = rect))
     }
 
     private fun renderPixelBuffer(image: CIImage): CVPixelBufferRef = memScoped {
@@ -173,7 +178,7 @@ class VisionBarcodeTest {
             buffer.ptr,
         )
         val pixelBuffer = assertNotNull(buffer.value)
-        CIContext.contextWithOptions(null).render(image, toCVPixelBuffer = pixelBuffer)
+        renderContext.render(image, toCVPixelBuffer = pixelBuffer)
         pixelBuffer
     }
 
