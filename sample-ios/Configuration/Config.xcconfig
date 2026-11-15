@@ -1,0 +1,7 @@
+TEAM_ID=
+
+PRODUCT_NAME=VisionCameraSample
+PRODUCT_BUNDLE_IDENTIFIER=me.nathanfallet.visioncamera.sample$(TEAM_ID)
+
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0
