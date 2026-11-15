@@ -62,7 +62,10 @@ fun CameraScreen() {
         constraints = listOf(FPSConstraint(30.0)),
         zoom = zoom,
         torchMode = torchMode,
-        onStarted = { isRunning = true },
+        onStarted = {
+            isRunning = true
+            lastError = null
+        },
         onStopped = { isRunning = false },
         onError = { lastError = it.message ?: it.toString() },
     )
