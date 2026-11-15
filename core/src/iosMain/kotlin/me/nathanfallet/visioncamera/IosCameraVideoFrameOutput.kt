@@ -12,6 +12,7 @@ import platform.AVFoundation.AVVideoCodecTypeHEVC
 import platform.CoreMedia.CMClockRef
 import platform.CoreMedia.CMSampleBufferRef
 import platform.Foundation.NSLock
+import kotlin.concurrent.AtomicInt
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.WeakReference
 
@@ -35,6 +36,7 @@ internal class IosCameraVideoFrameOutput(
     private val recordersLock = NSLock()
     private val recorders = mutableListOf<WeakReference<IosFrameRecorder>>()
     private val fileType: RecorderFileType = options.fileType
+    private val isDisposed = AtomicInt(0)
 
     override val streamType: StreamType = StreamType.VIDEO
 
@@ -209,6 +211,16 @@ internal class IosCameraVideoFrameOutput(
         } finally {
             recordersLock.unlock()
         }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Stop receiving video buffers, and stop the separate audio capture session (which holds the microphone).
+        delegate.onFrame = null
+        output.setSampleBufferDelegate(null, queue = null)
+        audioSession?.stop()
+        audioSession = null
+        withRecorders { it.clear() }
     }
 
     override fun toString(): String = "CameraVideoOutput($output)"

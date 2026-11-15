@@ -1,6 +1,9 @@
 package me.nathanfallet.visioncamera
 
+import android.os.Handler
+import android.os.Looper
 import androidx.camera.core.Preview
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The Android [CameraPreviewOutput], backed by a CameraX [Preview] use-case.
@@ -10,6 +13,7 @@ import androidx.camera.core.Preview
 internal class AndroidPreviewOutput : CameraPreviewOutput, NativeCameraOutput {
     private var preview: Preview? = null
     private var surfaceProvider: Preview.SurfaceProvider? = null
+    private val isDisposed = AtomicBoolean(false)
 
     override val mediaType: MediaType = MediaType.VIDEO
 
@@ -54,6 +58,20 @@ internal class AndroidPreviewOutput : CameraPreviewOutput, NativeCameraOutput {
         return NativeCameraOutput.PreparedUseCase(preview) {
             this.preview = preview
             preview.surfaceProvider = surfaceProvider
+        }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(false, true)) return
+        // Disconnect the PreviewView's surface, so CameraX releases it. CameraX requires the main thread for this.
+        val disconnect = {
+            surfaceProvider = null
+            preview?.surfaceProvider = null
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            disconnect()
+        } else {
+            Handler(Looper.getMainLooper()).post { disconnect() }
         }
     }
 }

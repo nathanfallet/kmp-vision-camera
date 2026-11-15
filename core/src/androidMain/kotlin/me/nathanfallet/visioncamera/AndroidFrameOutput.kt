@@ -2,6 +2,7 @@ package me.nathanfallet.visioncamera
 
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.resolutionselector.ResolutionSelector
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The Android [CameraFrameOutput], backed by a CameraX [ImageAnalysis] use-case.
@@ -11,6 +12,7 @@ internal class AndroidFrameOutput(
 ) : CameraFrameOutput, NativeCameraOutput {
     private val executor = IdentifiableExecutor("me.nathanfallet.visioncamera.frame")
     private val lock = Any()
+    private val isDisposed = AtomicBoolean(false)
 
     override val mediaType: MediaType = MediaType.VIDEO
 
@@ -91,7 +93,7 @@ internal class AndroidFrameOutput(
      */
     private fun updateAnalyzer() = synchronized(lock) {
         val imageAnalysis = imageAnalysis ?: return@synchronized
-        if (onFrame != null) {
+        if (onFrame != null && !isDisposed.get()) {
             imageAnalysis.setAnalyzer(executor) { image ->
                 // The callback might have been removed in the meantime.
                 val onFrame = onFrame
@@ -128,5 +130,13 @@ internal class AndroidFrameOutput(
 
     override fun setOnFrameDroppedCallback(onFrameDropped: ((reason: FrameDroppedReason) -> Unit)?) {
         // Limitation: CameraX does not have a way to figure out if a Frame has been dropped or not.
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(false, true)) return
+        // Like V5, stop receiving Frames, then also stop the Frame thread.
+        onFrame = null
+        synchronized(lock) { imageAnalysis?.clearAnalyzer() }
+        executor.shutdown()
     }
 }

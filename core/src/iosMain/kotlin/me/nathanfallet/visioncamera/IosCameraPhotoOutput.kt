@@ -15,6 +15,7 @@ import platform.AVFoundation.previewCGImageRepresentation
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSValue
 import platform.UIKit.UIImage
+import kotlin.concurrent.AtomicInt
 
 /**
  * The iOS [CameraPhotoOutput], backed by an [AVCapturePhotoOutput] (port of V5's `HybridCameraPhotoOutput.swift`).
@@ -31,6 +32,7 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
     // Like V5, this stays `false` even if depth data delivery is used.
     override val requiresDepthFormat: Boolean = false
     override val output: AVCapturePhotoOutput = AVCapturePhotoOutput()
+    private val isDisposed = AtomicInt(0)
 
     private val videoConnection: AVCaptureConnection?
         get() = output.connectionWithMediaType(AVMediaTypeVideo)
@@ -174,6 +176,13 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
             }
         }
         result.await()
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Release the resources prepared for the default (and any other prepared) Photo Settings: preparing an empty
+        // array releases them.
+        output.setPreparedPhotoSettingsArray(emptyList<Any?>(), completionHandler = null)
     }
 
     override fun toString(): String = "CameraPhotoOutput($output)"

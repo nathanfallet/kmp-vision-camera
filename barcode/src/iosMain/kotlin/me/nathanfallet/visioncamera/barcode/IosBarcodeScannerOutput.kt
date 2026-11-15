@@ -22,6 +22,7 @@ import platform.CoreMedia.CMSampleBufferRef
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_queue_create
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.Volatile
 
 /**
@@ -49,6 +50,8 @@ internal class IosBarcodeScannerOutput(
     /** Whether a frame is being scanned. Set on [queue], reset on the main thread. */
     @Volatile
     private var isScanning = false
+
+    private val isDisposed = AtomicInt(0)
 
     override val output: AVCaptureVideoDataOutput = AVCaptureVideoDataOutput()
     override val requiresAudioInput: Boolean = false
@@ -96,6 +99,8 @@ internal class IosBarcodeScannerOutput(
             CFRelease(buffer)
             dispatch_async(dispatch_get_main_queue()) {
                 isScanning = false
+                // A scan still running when this output is disposed is dropped.
+                if (isDisposed.value != 0) return@dispatch_async
                 result
                     .onSuccess { barcodes -> onBarcodeScanned(barcodes) }
                     .onFailure { error -> onError(error) }
@@ -106,6 +111,12 @@ internal class IosBarcodeScannerOutput(
     override fun configure(config: OutputConfiguration) {
         val connection = videoConnection ?: return
         connection.preferredVideoStabilizationMode = AVCaptureVideoStabilizationModeOff
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Stop receiving frames by detaching the delegate.
+        output.setSampleBufferDelegate(null, queue = null)
     }
 
     override fun toString(): String = "BarcodeScannerOutput($output)"

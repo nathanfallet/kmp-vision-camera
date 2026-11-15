@@ -5,6 +5,7 @@ import platform.AVFoundation.AVCaptureVideoDataOutput
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
 import platform.Foundation.NSNumber
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.Volatile
 
 /**
@@ -19,6 +20,7 @@ internal class IosCameraFrameOutput(
 ) : CameraFrameOutput, NativeCameraOutput {
     private val delegate = FrameDelegate()
     private val queue = createSerialQueue(QUEUE_LABEL)
+    private val isDisposed = AtomicInt(0)
 
     // Like V5, `configure(...)` sets it on the session queue while Frames read it on the Frame queue, so an old Frame
     // might read a newer `mirrorMode`.
@@ -129,6 +131,14 @@ internal class IosCameraFrameOutput(
                 frameDroppedReasonOfSampleBuffer(sampleBuffer)?.let(callback)
             }
         }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Stop receiving Frames: clear the callbacks and detach the delegate.
+        delegate.onFrame = null
+        delegate.onFrameDropped = null
+        output.setSampleBufferDelegate(null, queue = null)
     }
 
     override fun toString(): String = "CameraFrameOutput($output)"

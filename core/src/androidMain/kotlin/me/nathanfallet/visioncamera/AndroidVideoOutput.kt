@@ -96,4 +96,8 @@ internal class AndroidVideoOutput(
 
         AndroidRecorder(pendingRecording, file)
     }
+
+    // Like V5, this output holds no native resource of its own: its CameraX `Recorder` is released with the use-case
+    // once it is unbound, and recordings are owned (and stopped) by their `Recorder`.
+    override fun dispose() = Unit
 }

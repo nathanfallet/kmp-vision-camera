@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 /**
@@ -31,6 +32,7 @@ internal class AndroidPhotoOutput(
 
     private var imageCapture: ImageCapture? = null
     private val shutterSound = MediaActionSound()
+    private val isDisposed = AtomicBoolean(false)
 
     override val mediaType: MediaType = MediaType.VIDEO
 
@@ -47,7 +49,12 @@ internal class AndroidPhotoOutput(
 
     init {
         // Pre-load the shutter sound
-        CoroutineScope(Dispatchers.IO).launch { shutterSound.load(MediaActionSound.SHUTTER_CLICK) }
+        CoroutineScope(Dispatchers.IO).launch {
+            // Synchronized with `dispose()`, as a released MediaActionSound cannot load sounds anymore.
+            synchronized(shutterSound) {
+                if (!isDisposed.get()) shutterSound.load(MediaActionSound.SHUTTER_CLICK)
+            }
+        }
     }
 
     override fun createUseCase(
@@ -213,6 +220,12 @@ internal class AndroidPhotoOutput(
 
     // Preparing settings is not needed on Android.
     override suspend fun prepareSettings(settings: List<CapturePhotoSettings>) = Unit
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(false, true)) return
+        // Release the pre-loaded shutter sound's native player.
+        synchronized(shutterSound) { shutterSound.release() }
+    }
 
     private companion object {
         const val JPEG_QUALITY_MAX = 100.0

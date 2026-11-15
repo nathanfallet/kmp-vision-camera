@@ -3,6 +3,7 @@ package me.nathanfallet.visioncamera
 import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureDepthDataOutput
 import platform.AVFoundation.AVMediaTypeDepthData
+import kotlin.concurrent.AtomicInt
 import kotlin.concurrent.Volatile
 
 /**
@@ -17,6 +18,7 @@ internal class IosCameraDepthFrameOutput(
 ) : CameraDepthFrameOutput, NativeCameraOutput {
     private val delegate = DepthFrameDelegate()
     private val queue = createSerialQueue(QUEUE_LABEL)
+    private val isDisposed = AtomicInt(0)
 
     // Like V5, `configure(...)` sets it on the session queue while Depth frames read it on the Depth queue, so an old
     // Depth frame might read a newer `mirrorMode`.
@@ -99,6 +101,14 @@ internal class IosCameraDepthFrameOutput(
         delegate.onDepthFrameDropped = onDepthFrameDropped?.let { callback ->
             { avReason -> callback(frameDroppedReasonOf(avReason)) }
         }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Stop receiving Depth frames: clear the callbacks and detach the delegate.
+        delegate.onDepthFrame = null
+        delegate.onDepthFrameDropped = null
+        output.setDelegate(null, callbackQueue = null)
     }
 
     override fun toString(): String = "CameraDepthFrameOutput($output)"

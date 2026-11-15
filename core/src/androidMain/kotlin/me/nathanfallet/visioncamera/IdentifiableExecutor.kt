@@ -23,6 +23,14 @@ internal class IdentifiableExecutor(
         executor.execute(command)
     }
 
+    /**
+     * Shuts this executor down: already submitted tasks still run, new ones are rejected, and its thread stops once
+     * they are done.
+     */
+    fun shutdown() {
+        executor.shutdown()
+    }
+
     /** Whether the calling thread is this executor's thread. */
     val isRunningOnExecutor: Boolean
         get() = Thread.currentThread() == threadRef.get()

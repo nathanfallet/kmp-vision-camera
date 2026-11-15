@@ -4,6 +4,7 @@ import kotlinx.cinterop.useContents
 import platform.AVFoundation.AVCaptureVideoPreviewLayer
 import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.UIKit.UIScreen
+import kotlin.concurrent.AtomicInt
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.ref.Cleaner
 import kotlin.native.ref.createCleaner
@@ -22,6 +23,7 @@ internal class IosCameraPreviewOutput : CameraPreviewOutput, NativePreviewViewOu
     }
 
     private val orientationManager = InterfaceOrientationManager()
+    private val isDisposed = AtomicInt(0)
 
     // Stops the orientation updates once this output is garbage collected (the equivalent of V5's `deinit`).
     @OptIn(ExperimentalNativeApi::class)
@@ -74,6 +76,12 @@ internal class IosCameraPreviewOutput : CameraPreviewOutput, NativePreviewViewOu
         orientationManager.currentOrientation?.let { orientation ->
             runCatching { connection.setOrientation(orientation) }
         }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Like V5's `deinit`, stop following the interface orientation.
+        orientationManager.stopOrientationUpdates()
     }
 
     override fun toString(): String = "CameraPreviewOutput($previewLayer)"

@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 internal class AndroidBarcodeScannerOutput(
     private val options: BarcodeScannerOutputOptions,
-) : NativeCameraOutput, AutoCloseable {
+) : NativeCameraOutput {
     override val mediaType: MediaType = MediaType.VIDEO
 
     override var outputOrientation: CameraOrientation = CameraOrientation.UP
@@ -48,6 +48,7 @@ internal class AndroidBarcodeScannerOutput(
     }
     private val scanner = BarcodeScanning.getClient(mlBarcodeScannerOptions(options.barcodeFormats))
     private val isBusy = AtomicBoolean(false)
+    private val isDisposed = AtomicBoolean(false)
 
     override fun createUseCase(
         mirrorMode: MirrorMode,
@@ -100,17 +101,12 @@ internal class AndroidBarcodeScannerOutput(
         }
     }
 
-    /**
-     * Disposes this output, releasing the ML Kit scanner and the analysis thread. It must not be used afterwards.
-     */
-    fun dispose() {
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(false, true)) return
+        // Like V5, release the ML Kit scanner and the analysis thread (and stop receiving frames first).
         imageAnalysis?.clearAnalyzer()
         scanner.close()
         executor.shutdown()
-    }
-
-    override fun close() {
-        dispose()
     }
 
     private companion object {

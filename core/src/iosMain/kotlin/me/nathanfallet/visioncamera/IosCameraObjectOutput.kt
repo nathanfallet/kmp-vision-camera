@@ -4,6 +4,7 @@ import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCaptureMetadataOutput
 import platform.AVFoundation.AVMediaTypeMetadataObject
 import platform.darwin.dispatch_queue_create
+import kotlin.concurrent.AtomicInt
 
 /**
  * The iOS [CameraObjectOutput], scanning codes, faces and bodies with an [AVCaptureMetadataOutput] (port of V5's
@@ -14,6 +15,7 @@ internal class IosCameraObjectOutput(
 ) : CameraObjectOutput, NativeCameraOutput {
     private val queue = dispatch_queue_create("me.nathanfallet.visioncamera.object-scanner", null)
     private val delegate = MetadataDelegate()
+    private val isDisposed = AtomicInt(0)
 
     override val mediaType: MediaType = MediaType.METADATA
     override val output: AVCaptureMetadataOutput = AVCaptureMetadataOutput()
@@ -57,6 +59,13 @@ internal class IosCameraObjectOutput(
         delegate.onMetadataObjects = onObjectsScanned?.let { callback ->
             { objects -> callback(objects.map { createScannedObject(it) }) }
         }
+    }
+
+    override fun dispose() {
+        if (!isDisposed.compareAndSet(0, 1)) return
+        // Stop receiving scanned objects: clear the callback and detach the delegate.
+        delegate.onMetadataObjects = null
+        output.setMetadataObjectsDelegate(null, queue = null)
     }
 
     override fun toString(): String = "CameraObjectOutput($output)"

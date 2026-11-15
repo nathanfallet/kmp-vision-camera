@@ -118,5 +118,8 @@ internal class IosCameraVideoOutput(private val options: VideoOutputOptions) : C
         output.setOutputSettings(settings, forConnection = connection)
     }
 
+    // Like V5, this output holds no native resource of its own: recordings are owned (and stopped) by their `Recorder`.
+    override fun dispose() = Unit
+
     override fun toString(): String = "CameraVideoOutput($output)"
 }
