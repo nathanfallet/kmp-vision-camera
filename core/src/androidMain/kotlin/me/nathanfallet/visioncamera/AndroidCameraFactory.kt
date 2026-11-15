@@ -4,12 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 
 /**
  * The Android [CameraFactory], backed by CameraX.
  */
+@Suppress("TooManyFunctions")
 internal class AndroidCameraFactory : CameraFactory {
     private val context: Context
         get() = AndroidContext.context
@@ -54,19 +56,25 @@ internal class AndroidCameraFactory : CameraFactory {
 
     override fun createPreviewOutput(): CameraPreviewOutput = AndroidPreviewOutput()
 
-    // Phase 1 features below are not implemented on this platform yet.
+    override fun createPhotoOutput(options: PhotoOutputOptions): CameraPhotoOutput = AndroidPhotoOutput(options)
 
-    override fun createPhotoOutput(options: PhotoOutputOptions): CameraPhotoOutput =
-        notImplementedYet("createPhotoOutput")
+    override fun createVideoOutput(options: VideoOutputOptions): CameraVideoOutput = AndroidVideoOutput(options)
 
-    override fun createVideoOutput(options: VideoOutputOptions): CameraVideoOutput =
-        notImplementedYet("createVideoOutput")
-
-    override fun createZoomGestureController(): ZoomGestureController = notImplementedYet("createZoomGestureController")
+    override fun createZoomGestureController(): ZoomGestureController = AndroidZoomGestureController()
 
     override fun createTapToFocusGestureController(): TapToFocusGestureController =
-        notImplementedYet("createTapToFocusGestureController")
+        AndroidTapToFocusGestureController()
 
-    override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint =
-        notImplementedYet("createNormalizedMeteringPoint")
+    override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint {
+        val meteringPoint = if (size != null) {
+            normalizedMeteringPointFactory.createPoint(x.toFloat(), y.toFloat(), size.toFloat())
+        } else {
+            normalizedMeteringPointFactory.createPoint(x.toFloat(), y.toFloat())
+        }
+        return AndroidMeteringPoint(x, y, size, meteringPoint)
+    }
+
+    private companion object {
+        val normalizedMeteringPointFactory by lazy { SurfaceOrientedMeteringPointFactory(1f, 1f) }
+    }
 }

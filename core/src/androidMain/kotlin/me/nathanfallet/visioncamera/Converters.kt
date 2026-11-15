@@ -1,6 +1,17 @@
 package me.nathanfallet.visioncamera
 
+import android.os.Build
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalZeroShutterLag
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageCapture
 import androidx.camera.core.TorchState
+
+/** The number of milliseconds in a second. */
+internal const val MILLISECONDS_PER_SECOND = 1_000.0
+
+/** The number of nanoseconds in a second. */
+internal const val NANOSECONDS_PER_SECOND = 1_000_000_000.0
 
 /** Converts a CameraX dynamic range to a [DynamicRange]. */
 internal fun androidx.camera.core.DynamicRange.toDynamicRange(): DynamicRange {
@@ -53,3 +64,43 @@ internal fun torchModeFromTorchState(torchState: Int): TorchMode = when (torchSt
     TorchState.ON -> TorchMode.ON
     else -> TorchMode.OFF
 }
+
+/** Converts a [FlashMode] to a CameraX `ImageCapture` flash mode. */
+internal fun FlashMode.toCameraXFlashMode(): Int = when (this) {
+    FlashMode.ON -> ImageCapture.FLASH_MODE_ON
+    FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
+    FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+}
+
+/** Converts a [QualityPrioritization] to a CameraX `ImageCapture` capture mode. */
+@OptIn(ExperimentalZeroShutterLag::class)
+internal fun QualityPrioritization.toCameraXCaptureMode(): Int = when (this) {
+    QualityPrioritization.SPEED -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+    QualityPrioritization.BALANCED -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+    QualityPrioritization.QUALITY -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+}
+
+/** Converts a [MeteringMode] to a CameraX `FocusMeteringAction` flag. */
+internal fun MeteringMode.toCameraXMeteringMode(): Int = when (this) {
+    MeteringMode.AE -> FocusMeteringAction.FLAG_AE
+    MeteringMode.AF -> FocusMeteringAction.FLAG_AF
+    MeteringMode.AWB -> FocusMeteringAction.FLAG_AWB
+}
+
+/** Combines these [MeteringMode]s into CameraX `FocusMeteringAction` flags. */
+internal fun List<MeteringMode>.toCameraXMeteringMode(): Int {
+    if (isEmpty()) throw VisionCameraException("MeteringModes cannot be empty!")
+    return fold(0) { acc, mode -> acc or mode.toCameraXMeteringMode() }
+}
+
+/** Converts a [Location] to an Android [android.location.Location]. */
+internal fun Location.toAndroidLocation(): android.location.Location =
+    android.location.Location("VisionCamera").also { location ->
+        location.latitude = latitude
+        location.longitude = longitude
+        location.altitude = altitude
+        location.accuracy = horizontalAccuracy.toFloat()
+        location.verticalAccuracyMeters = verticalAccuracy.toFloat()
+        location.time = (timestamp * MILLISECONDS_PER_SECOND).toLong()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) location.isMock = isMock
+    }

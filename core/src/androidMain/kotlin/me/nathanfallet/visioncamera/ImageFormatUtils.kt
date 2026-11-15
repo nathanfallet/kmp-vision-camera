@@ -23,6 +23,12 @@ internal object ImageFormatUtils {
         ImageFormat.DEPTH_JPEG,
         ImageFormat.DEPTH_POINT_CLOUD,
     )
+    private val allRawFormats = intArrayOf(
+        ImageFormat.RAW_SENSOR,
+        ImageFormat.RAW_PRIVATE,
+        ImageFormat.RAW12,
+        ImageFormat.RAW10,
+    )
     private val allPhotoFormats = intArrayOf(
         ImageFormat.JPEG,
         ImageFormat.JPEG_R,
@@ -35,6 +41,8 @@ internal object ImageFormatUtils {
     fun isVideoFormat(format: Int): Boolean = format in allVideoFormats
 
     fun isDepthFormat(format: Int): Boolean = format in allDepthFormats
+
+    fun isRawFormat(format: Int): Boolean = format in allRawFormats
 
     fun isPhotoFormat(format: Int): Boolean = format in allPhotoFormats
 }
