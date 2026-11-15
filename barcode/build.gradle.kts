@@ -51,6 +51,7 @@ kotlin {
         namespace = "me.nathanfallet.visioncamera.barcode"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
+        withHostTest {}
     }
     iosArm64()
     iosSimulatorArm64()
@@ -69,6 +70,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.mlkit.barcode.scanning)
             implementation(libs.kotlinx.coroutines.play.services)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
         }
     }
 }

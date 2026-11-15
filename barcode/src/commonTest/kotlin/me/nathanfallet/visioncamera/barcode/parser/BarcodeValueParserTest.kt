@@ -1,0 +1,146 @@
+package me.nathanfallet.visioncamera.barcode.parser
+
+import me.nathanfallet.visioncamera.barcode.BarcodeFormat
+import me.nathanfallet.visioncamera.barcode.BarcodeValueType
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class BarcodeValueParserTest {
+    private fun assertParsed(
+        rawValue: String?,
+        expectedType: BarcodeValueType,
+        expectedDisplayValue: String?,
+        format: BarcodeFormat = BarcodeFormat.QR_CODE,
+    ) {
+        assertEquals(
+            ParsedBarcodeValue(expectedType, expectedDisplayValue),
+            BarcodeValueParser.parse(rawValue, format),
+            "Parsing ${rawValue?.let { "\"$it\"" }} ($format)",
+        )
+    }
+
+    @Test
+    fun nullRawValueIsUnknown() {
+        assertParsed(null, BarcodeValueType.UNKNOWN, null)
+    }
+
+    @Test
+    fun plainTextIsText() {
+        assertParsed("Hello, World!", BarcodeValueType.TEXT, "Hello, World!")
+        assertParsed("line 1\nline 2", BarcodeValueType.TEXT, "line 1\nline 2")
+        assertParsed("", BarcodeValueType.TEXT, "")
+        assertParsed("ABC-12345", BarcodeValueType.TEXT, "ABC-12345", BarcodeFormat.CODE_128)
+    }
+
+    @Test
+    fun urls() {
+        assertParsed("https://margelo.com", BarcodeValueType.URL, "https://margelo.com")
+        assertParsed("HTTP://EXAMPLE.COM/A?b=c", BarcodeValueType.URL, "HTTP://EXAMPLE.COM/A?b=c")
+        assertParsed("www.google.com", BarcodeValueType.URL, "www.google.com")
+        assertParsed("https://example.com", BarcodeValueType.URL, "https://example.com", BarcodeFormat.CODE_128)
+        // Whitespace means it is a sentence, not a URL
+        assertParsed("https://example.com is great", BarcodeValueType.TEXT, "https://example.com is great")
+    }
+
+    @Test
+    fun bookmarks() {
+        assertParsed("MEBKM:TITLE:Google;URL://www.google.com;;", BarcodeValueType.URL, "//www.google.com")
+        assertParsed("MEBKM:URL:https\\://example.com;TITLE:Example;;", BarcodeValueType.URL, "https://example.com")
+        assertParsed("URLTO:Example:https://example.com", BarcodeValueType.URL, "https://example.com")
+        assertParsed("URLTO::https://example.com", BarcodeValueType.URL, "https://example.com")
+    }
+
+    @Test
+    fun emails() {
+        assertParsed("mailto:hello@example.com", BarcodeValueType.EMAIL, "hello@example.com")
+        assertParsed("MAILTO:hello@example.com?subject=Hi&body=Hello", BarcodeValueType.EMAIL, "hello@example.com")
+        assertParsed("mailto:hello%40example.com", BarcodeValueType.EMAIL, "hello@example.com")
+        assertParsed("MATMSG:TO:hello@example.com;SUB:Hi;BODY:Hello;;", BarcodeValueType.EMAIL, "hello@example.com")
+    }
+
+    @Test
+    fun phones() {
+        assertParsed("tel:+1-555-0100", BarcodeValueType.PHONE, "+1-555-0100")
+        assertParsed("TEL:0123456789", BarcodeValueType.PHONE, "0123456789")
+    }
+
+    @Test
+    fun sms() {
+        assertParsed("SMSTO:+15550100:Hello there", BarcodeValueType.SMS, "+15550100")
+        assertParsed("smsto:+15550100", BarcodeValueType.SMS, "+15550100")
+        assertParsed("sms:+15550100?body=Hello", BarcodeValueType.SMS, "+15550100")
+        assertParsed("sms:+15550100", BarcodeValueType.SMS, "+15550100")
+        assertParsed("MMSTO:+15550100:Hello", BarcodeValueType.SMS, "+15550100")
+    }
+
+    @Test
+    fun wifi() {
+        assertParsed("WIFI:T:WPA;S:MyNetwork;P:password;;", BarcodeValueType.WIFI, "MyNetwork")
+        assertParsed("WIFI:S:My\\;Net\\:work;T:WEP;P:pass\\;word;H:true;;", BarcodeValueType.WIFI, "My;Net:work")
+        assertParsed("wifi:s:lowercase;;", BarcodeValueType.WIFI, "lowercase")
+        // No SSID: not a WiFi config
+        assertParsed("WIFI:T:WPA;P:password;;", BarcodeValueType.TEXT, "WIFI:T:WPA;P:password;;")
+    }
+
+    @Test
+    fun geo() {
+        assertParsed("geo:37.786971,-122.399677", BarcodeValueType.GEO, "37.786971,-122.399677")
+        assertParsed("GEO:48.8584,2.2945,330?q=Eiffel+Tower", BarcodeValueType.GEO, "48.8584,2.2945")
+        assertParsed("geo:48.8584,2.2945;u=35", BarcodeValueType.GEO, "48.8584,2.2945")
+        assertParsed("geo:somewhere", BarcodeValueType.TEXT, "geo:somewhere")
+    }
+
+    @Test
+    fun contacts() {
+        val vCard = "BEGIN:VCARD\r\nVERSION:3.0\r\nN:Doe;John;;Dr.;\r\nFN:Dr. John Doe\r\nTEL:+15550100\r\nEND:VCARD"
+        assertParsed(vCard, BarcodeValueType.CONTACT_INFO, "Dr. John Doe")
+        val vCardWithoutFn = "BEGIN:VCARD\nVERSION:2.1\nN;CHARSET=UTF-8:Doe;Jane;Marie;;\nEND:VCARD"
+        assertParsed(vCardWithoutFn, BarcodeValueType.CONTACT_INFO, "Jane Marie Doe")
+        val meCard = "MECARD:N:Doe,John;TEL:+15550100;EMAIL:john@example.com;;"
+        assertParsed(meCard, BarcodeValueType.CONTACT_INFO, "John Doe")
+        assertParsed("MECARD:N:Jane;;", BarcodeValueType.CONTACT_INFO, "Jane")
+    }
+
+    @Test
+    fun calendarEvents() {
+        val event = "BEGIN:VEVENT\nSUMMARY:Team meeting\nDTSTART:20261115T090000Z\nDTEND:20261115T100000Z\nEND:VEVENT"
+        assertParsed(event, BarcodeValueType.CALENDAR_EVENT, "Team meeting")
+        val calendar = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Launch\\, v5\nEND:VEVENT\nEND:VCALENDAR"
+        assertParsed(calendar, BarcodeValueType.CALENDAR_EVENT, "Launch, v5")
+        val withoutEvent = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR"
+        assertParsed(withoutEvent, BarcodeValueType.TEXT, withoutEvent)
+    }
+
+    @Test
+    fun driverLicenses() {
+        val license = "@\n\u001e\rANSI 636014080102DL00410288ZC03290024DLDAQD1234562\nDCSDOE\nDACJOHN\n"
+        assertParsed(license, BarcodeValueType.DRIVER_LICENSE, license, BarcodeFormat.PDF_417)
+        val oldLicense = "@\n\u001e\rAAMVA6360000102DL00390187DLDAQ0123456789\n"
+        assertParsed(oldLicense, BarcodeValueType.DRIVER_LICENSE, oldLicense, BarcodeFormat.PDF_417)
+        // Only PDF417 codes are driver's licenses
+        assertParsed(license, BarcodeValueType.TEXT, license, BarcodeFormat.QR_CODE)
+        assertParsed("@ hello", BarcodeValueType.TEXT, "@ hello", BarcodeFormat.PDF_417)
+    }
+
+    @Test
+    fun products() {
+        assertParsed("9780201379624", BarcodeValueType.ISBN, "9780201379624", BarcodeFormat.EAN_13)
+        assertParsed("9791032305690", BarcodeValueType.ISBN, "9791032305690", BarcodeFormat.EAN_13)
+        assertParsed("4006381333931", BarcodeValueType.PRODUCT, "4006381333931", BarcodeFormat.EAN_13)
+        assertParsed("96385074", BarcodeValueType.PRODUCT, "96385074", BarcodeFormat.EAN_8)
+        assertParsed("036000291452", BarcodeValueType.PRODUCT, "036000291452", BarcodeFormat.UPC_A)
+        assertParsed("01234565", BarcodeValueType.PRODUCT, "01234565", BarcodeFormat.UPC_E)
+        // 978 is only an ISBN prefix for EAN-13s
+        assertParsed("97801234", BarcodeValueType.PRODUCT, "97801234", BarcodeFormat.EAN_8)
+        // Other formats are never products
+        assertParsed("9780201379624", BarcodeValueType.TEXT, "9780201379624", BarcodeFormat.CODE_128)
+    }
+
+    @Test
+    fun percentDecoding() {
+        assertEquals("a b", percentDecode("a%20b"))
+        assertEquals("é", percentDecode("%C3%A9"))
+        assertEquals("100%", percentDecode("100%"))
+        assertEquals("%zz", percentDecode("%zz"))
+    }
+}
