@@ -20,6 +20,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,8 +35,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraDevice
+import me.nathanfallet.visioncamera.CapturePhotoSettings
 import me.nathanfallet.visioncamera.MediaType
 import me.nathanfallet.visioncamera.Recorder
+import me.nathanfallet.visioncamera.RecorderSettings
 import me.nathanfallet.visioncamera.TargetCameraPosition
 import me.nathanfallet.visioncamera.TorchMode
 import me.nathanfallet.visioncamera.compose.NativePreviewView
@@ -47,8 +50,11 @@ import me.nathanfallet.visioncamera.compose.rememberPhotoOutput
 import me.nathanfallet.visioncamera.compose.rememberPreviewViewRef
 import me.nathanfallet.visioncamera.compose.rememberPreviewOutput
 import me.nathanfallet.visioncamera.compose.rememberVideoOutput
+import me.nathanfallet.visioncamera.location.LocationAccuracy
+import me.nathanfallet.visioncamera.location.compose.rememberLocation
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -89,6 +95,12 @@ fun CameraScreen() {
     var lastVideo by remember { mutableStateOf<String?>(null) }
     var streamMode by remember { mutableStateOf(StreamMode.VIDEO) }
     val scope = rememberCoroutineScope()
+
+    // Like VisionCamera's example app: ask for the location once, and embed it in photos and videos.
+    val location = rememberLocation(accuracy = LocationAccuracy.BALANCED, distanceFilter = 10.0)
+    LaunchedEffect(location.hasPermission) {
+        if (!location.hasPermission) location.requestPermission()
+    }
 
     val defaultDevice = rememberCameraDevice(position)
     // Only some Cameras capture depth (e.g. the dual or TrueDepth Cameras, not the back wide-angle Camera of an
@@ -162,6 +174,8 @@ fun CameraScreen() {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
+                location = location.currentLocation?.let { "${it.latitude.format(4)}, ${it.longitude.format(4)}" }
+                    ?: "No location".takeIf { location.hasPermission },
                 streamStats = when (streamMode) {
                     StreamMode.FRAMES -> frameStats?.let { "Frames: $it" }
                     StreamMode.DEPTH -> depthStats?.let { "Depth: $it" }
@@ -187,7 +201,8 @@ fun CameraScreen() {
                         onClick = {
                             scope.launch {
                                 attempt(onError = { lastError = it }) {
-                                    thumbnail = photoOutput.capturePhoto().use { it.toThumbnail() }
+                                    val settings = CapturePhotoSettings(location = location.currentLocation)
+                                    thumbnail = photoOutput.capturePhoto(settings).use { it.toThumbnail() }
                                 }
                             }
                         },
@@ -201,7 +216,9 @@ fun CameraScreen() {
                                     if (current != null) {
                                         current.stopRecording()
                                     } else {
-                                        val newRecorder = videoOutput.createRecorder()
+                                        val newRecorder = videoOutput.createRecorder(
+                                            RecorderSettings(location = location.currentLocation),
+                                        )
                                         newRecorder.startRecording(
                                             onRecordingFinished = { filePath, _ ->
                                                 lastVideo = filePath
@@ -267,6 +284,7 @@ private fun StatusPanel(
     isRunning: Boolean,
     isRecording: Boolean,
     lastVideo: String?,
+    location: String?,
     streamStats: String?,
     scannedCodes: List<String>,
     barcode: String?,
@@ -287,6 +305,7 @@ private fun StatusPanel(
         }
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
+        if (location != null) Text("Location: $location", color = Color.White)
         if (streamStats != null) Text(streamStats, color = Color.White)
         scannedCodes.forEach { Text("Object: $it", color = Color.Green) }
         if (barcode != null) Text("Barcode: $barcode", color = Color.Cyan)
@@ -355,4 +374,7 @@ private suspend fun attempt(onError: (String) -> Unit, block: suspend () -> Unit
 
 private const val MAX_SLIDER_ZOOM = 10f
 
-private fun Double.format(): String = ((this * 10).roundToInt() / 10.0).toString()
+private fun Double.format(decimals: Int = 1): String {
+    val factor = 10.0.pow(decimals)
+    return ((this * factor).roundToInt() / factor).toString()
+}
