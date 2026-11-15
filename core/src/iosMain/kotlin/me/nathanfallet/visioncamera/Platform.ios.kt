@@ -43,9 +43,13 @@ internal fun isIOSAtLeast(major: Long, minor: Long = 0): Boolean {
  * A minimal logger writing to the unified system log, like V5's `logger`.
  */
 internal object Logger {
-    fun info(message: String) = NSLog("VisionCamera: %@", message)
+    fun info(message: String) = log("VisionCamera: $message")
 
-    fun error(message: String) = NSLog("VisionCamera [ERROR]: %@", message)
+    fun error(message: String) = log("VisionCamera [ERROR]: $message")
+
+    // A Kotlin String passed to NSLog's variadic `%@` crashes on devices, so the message is the format itself, with
+    // its `%` escaped.
+    private fun log(line: String) = NSLog(line.replace("%", "%%"))
 }
 
 /**
