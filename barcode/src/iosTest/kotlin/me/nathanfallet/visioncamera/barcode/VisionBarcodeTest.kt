@@ -1,10 +1,8 @@
 package me.nathanfallet.visioncamera.barcode
 
-import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
-import kotlinx.cinterop.useContents
 import kotlinx.cinterop.value
 import me.nathanfallet.visioncamera.barcode.extensions.ResolvedBarcodeFormat
 import me.nathanfallet.visioncamera.barcode.extensions.VisionCoordinateSpace
@@ -12,27 +10,28 @@ import me.nathanfallet.visioncamera.barcode.extensions.resolveVisionFormat
 import me.nathanfallet.visioncamera.barcode.extensions.toBarcodeFormats
 import me.nathanfallet.visioncamera.barcode.extensions.uprightToSource
 import platform.CoreFoundation.kCFAllocatorDefault
-import platform.CoreGraphics.CGAffineTransformMakeScale
-import platform.CoreGraphics.CGAffineTransformMakeTranslation
+import platform.CoreGraphics.CGBitmapContextCreate
+import platform.CoreGraphics.CGBitmapContextCreateImage
+import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
+import platform.CoreGraphics.CGColorSpaceRelease
+import platform.CoreGraphics.CGContextFillRect
+import platform.CoreGraphics.CGContextRef
+import platform.CoreGraphics.CGContextRelease
+import platform.CoreGraphics.CGContextSetRGBFillColor
+import platform.CoreGraphics.CGImageAlphaInfo
 import platform.CoreGraphics.CGImageRef
 import platform.CoreGraphics.CGImageRelease
 import platform.CoreGraphics.CGRectMake
-import platform.CoreImage.CIColor
-import platform.CoreImage.CIContext
-import platform.CoreImage.CIFilter
-import platform.CoreImage.CIImage
-import platform.CoreImage.createCGImage
-import platform.CoreImage.filterWithName
-import platform.CoreImage.kCIContextUseSoftwareRenderer
+import platform.CoreGraphics.kCGBitmapByteOrder32Little
 import platform.CoreVideo.CVPixelBufferCreate
+import platform.CoreVideo.CVPixelBufferGetBaseAddress
+import platform.CoreVideo.CVPixelBufferGetBytesPerRow
+import platform.CoreVideo.CVPixelBufferLockBaseAddress
 import platform.CoreVideo.CVPixelBufferRef
 import platform.CoreVideo.CVPixelBufferRefVar
 import platform.CoreVideo.CVPixelBufferRelease
+import platform.CoreVideo.CVPixelBufferUnlockBaseAddress
 import platform.CoreVideo.kCVPixelFormatType_32BGRA
-import platform.Foundation.NSString
-import platform.Foundation.NSUTF8StringEncoding
-import platform.Foundation.dataUsingEncoding
-import platform.Foundation.setValue
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageOrientation
 import kotlin.math.abs
@@ -138,36 +137,54 @@ class VisionBarcodeTest {
 
     // region Vision
 
-    /** Generates a code with the given Core Image generator [filterName], scaled up [scale] times. */
-    @OptIn(BetaInteropApi::class)
-    private fun generateCode(filterName: String, message: String, scale: Double): CIImage {
-        val filter = assertNotNull(CIFilter.filterWithName(filterName))
-        @Suppress("CAST_NEVER_SUCCEEDS")
-        val data = (message as NSString).dataUsingEncoding(NSUTF8StringEncoding)
-        filter.setValue(data, forKey = "inputMessage")
-        return assertNotNull(filter.outputImage).imageByApplyingTransform(CGAffineTransformMakeScale(scale, scale))
+    /** A code to draw: its module matrix (`1` is a dark module), drawn at [scale] points per module. */
+    private class TestCode(val rows: List<String>, val scale: Double) {
+        val width get() = rows.first().length * scale
     }
+
+    /** A Code 128 barcode from its [bars], [barHeight] modules tall. */
+    private fun barcode(bars: String, scale: Double, barHeight: Int = 40) = TestCode(List(barHeight) { bars }, scale)
 
     /**
-     * A [SCENE_WIDTH]x[SCENE_HEIGHT] white scene with the given [code] at ([CODE_X], [CODE_Y]) from its bottom-left
-     * corner (Core Image coordinates).
+     * Draws a [SCENE_WIDTH]x[SCENE_HEIGHT] white scene with the given [code] at ([CODE_X], [CODE_Y]) from its
+     * bottom-left corner (Core Graphics coordinates).
      */
-    private fun scene(code: CIImage): CIImage {
-        val background = CIImage(color = CIColor(red = 1.0, green = 1.0, blue = 1.0))
-            .imageByCroppingToRect(CGRectMake(0.0, 0.0, SCENE_WIDTH, SCENE_HEIGHT))
-        return code.imageByApplyingTransform(CGAffineTransformMakeTranslation(CODE_X, CODE_Y))
-            .imageByCompositingOverImage(background)
+    private fun drawScene(context: CGContextRef?, code: TestCode) {
+        CGContextSetRGBFillColor(context, 1.0, 1.0, 1.0, 1.0)
+        CGContextFillRect(context, CGRectMake(0.0, 0.0, SCENE_WIDTH, SCENE_HEIGHT))
+        CGContextSetRGBFillColor(context, 0.0, 0.0, 0.0, 1.0)
+        code.rows.forEachIndexed { row, modules ->
+            // The first row is the top of the code, and Core Graphics' origin is the bottom-left corner
+            val y = CODE_Y + (code.rows.size - 1 - row) * code.scale
+            modules.forEachIndexed { column, module ->
+                if (module == '1') {
+                    CGContextFillRect(context, CGRectMake(CODE_X + column * code.scale, y, code.scale, code.scale))
+                }
+            }
+        }
     }
 
-    /** A software Core Image context: CI machines (e.g. GitHub's macOS runners) have no GPU for the simulator. */
-    private val renderContext = CIContext.contextWithOptions(mapOf<Any?, Any?>(kCIContextUseSoftwareRenderer to true))
-
-    private fun renderCGImage(image: CIImage): CGImageRef {
-        val rect = CGRectMake(0.0, 0.0, SCENE_WIDTH, SCENE_HEIGHT)
-        return assertNotNull(renderContext.createCGImage(image, fromRect = rect))
+    private fun renderCGImage(code: TestCode): CGImageRef {
+        val colorSpace = CGColorSpaceCreateDeviceRGB()
+        val context = CGBitmapContextCreate(
+            null,
+            SCENE_WIDTH.toULong(),
+            SCENE_HEIGHT.toULong(),
+            8u,
+            0u,
+            colorSpace,
+            CGImageAlphaInfo.kCGImageAlphaPremultipliedLast.value,
+        )
+        try {
+            drawScene(context, code)
+            return assertNotNull(CGBitmapContextCreateImage(context))
+        } finally {
+            CGContextRelease(context)
+            CGColorSpaceRelease(colorSpace)
+        }
     }
 
-    private fun renderPixelBuffer(image: CIImage): CVPixelBufferRef = memScoped {
+    private fun renderPixelBuffer(code: TestCode): CVPixelBufferRef = memScoped {
         val buffer = alloc<CVPixelBufferRefVar>()
         CVPixelBufferCreate(
             kCFAllocatorDefault,
@@ -178,7 +195,21 @@ class VisionBarcodeTest {
             buffer.ptr,
         )
         val pixelBuffer = assertNotNull(buffer.value)
-        renderContext.render(image, toCVPixelBuffer = pixelBuffer)
+        CVPixelBufferLockBaseAddress(pixelBuffer, 0u)
+        val colorSpace = CGColorSpaceCreateDeviceRGB()
+        val context = CGBitmapContextCreate(
+            CVPixelBufferGetBaseAddress(pixelBuffer),
+            SCENE_WIDTH.toULong(),
+            SCENE_HEIGHT.toULong(),
+            8u,
+            CVPixelBufferGetBytesPerRow(pixelBuffer),
+            colorSpace,
+            CGImageAlphaInfo.kCGImageAlphaPremultipliedFirst.value or kCGBitmapByteOrder32Little,
+        )
+        drawScene(context, code)
+        CGContextRelease(context)
+        CGColorSpaceRelease(colorSpace)
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0u)
         pixelBuffer
     }
 
@@ -193,9 +224,9 @@ class VisionBarcodeTest {
 
     @Test
     fun scansAQRCodeInAnImage() {
-        val code = generateCode("CIQRCodeGenerator", "https://margelo.com", scale = 8.0)
-        val codeSize = code.extent.useContents { size.width }
-        val cgImage = renderCGImage(scene(code))
+        val code = TestCode(TestCodes.QR_URL, scale = 8.0)
+        val codeSize = code.width
+        val cgImage = renderCGImage(code)
         try {
             val barcode = detector(TargetBarcodeFormat.ALL_FORMATS).detect(UIImage.imageWithCGImage(cgImage)).single()
             assertEquals(BarcodeFormat.QR_CODE, barcode.format)
@@ -227,8 +258,7 @@ class VisionBarcodeTest {
 
     @Test
     fun reportsImageCoordinatesInTheUprightImage() {
-        val code = generateCode("CIQRCodeGenerator", "WIFI:T:WPA;S:MyNetwork;P:password;;", scale = 8.0)
-        val cgImage = renderCGImage(scene(code))
+        val cgImage = renderCGImage(TestCode(TestCodes.QR_WIFI, scale = 8.0))
         try {
             val detector = detector(TargetBarcodeFormat.QR_CODE)
             val up = detector.detect(UIImage.imageWithCGImage(cgImage)).single()
@@ -254,8 +284,7 @@ class VisionBarcodeTest {
 
     @Test
     fun reportsFrameCoordinatesInThePixelBuffer() {
-        val code = generateCode("CIQRCodeGenerator", "tel:+15550100", scale = 8.0)
-        val pixelBuffer = renderPixelBuffer(scene(code))
+        val pixelBuffer = renderPixelBuffer(TestCode(TestCodes.QR_PHONE, scale = 8.0))
         try {
             val detector = detector(TargetBarcodeFormat.ALL_FORMATS)
             val up = detector.detect(pixelBuffer, UIImageOrientation.UIImageOrientationUp).single()
@@ -275,8 +304,7 @@ class VisionBarcodeTest {
 
     @Test
     fun scansACode128() {
-        val code = generateCode("CICode128BarcodeGenerator", "VISION-CAMERA-5", scale = 3.0)
-        val cgImage = renderCGImage(scene(code))
+        val cgImage = renderCGImage(barcode(TestCodes.CODE_128_BARS, scale = 3.0))
         try {
             val barcode = detector(TargetBarcodeFormat.CODE_128).detect(UIImage.imageWithCGImage(cgImage)).single()
             assertEquals(BarcodeFormat.CODE_128, barcode.format)
