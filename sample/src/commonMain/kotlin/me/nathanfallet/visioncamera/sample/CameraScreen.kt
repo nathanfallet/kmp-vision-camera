@@ -43,6 +43,7 @@ import me.nathanfallet.visioncamera.compose.rememberCameraDevice
 import me.nathanfallet.visioncamera.compose.rememberCameraDevices
 import me.nathanfallet.visioncamera.compose.rememberGestureControllers
 import me.nathanfallet.visioncamera.compose.rememberPhotoOutput
+import me.nathanfallet.visioncamera.compose.rememberPreviewViewRef
 import me.nathanfallet.visioncamera.compose.rememberPreviewOutput
 import me.nathanfallet.visioncamera.compose.rememberVideoOutput
 import kotlinx.coroutines.launch
@@ -66,6 +67,7 @@ fun CameraScreen() {
     var thumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
     var recorder by remember { mutableStateOf<Recorder?>(null) }
     var lastVideo by remember { mutableStateOf<String?>(null) }
+    var enableFrameProcessor by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val defaultDevice = rememberCameraDevice(position)
@@ -73,10 +75,19 @@ fun CameraScreen() {
     val previewOutput = rememberPreviewOutput()
     val photoOutput = rememberPhotoOutput()
     val videoOutput = rememberVideoOutput()
+    val (frameOutput, frameStats) = rememberFrameStats()
+    val (objectOutput, scannedCodes) = rememberCodeScanner()
+    val previewRef = rememberPreviewViewRef()
     val controller = rememberCamera(
         isActive = isActive,
         device = device ?: position,
-        outputs = listOf(previewOutput, photoOutput, videoOutput),
+        // The frame processor replaces the video output, as not all devices can stream 4 outputs at once.
+        outputs = listOfNotNull(
+            previewOutput,
+            photoOutput,
+            if (enableFrameProcessor) frameOutput else videoOutput,
+            objectOutput,
+        ),
         constraints = listOf(FPSConstraint(30.0)),
         zoom = zoom,
         torchMode = torchMode,
@@ -98,7 +109,9 @@ fun CameraScreen() {
             previewOutput = previewOutput,
             modifier = Modifier.fillMaxSize(),
             gestureControllers = gestureControllers,
+            ref = previewRef,
         )
+        ScannedCodesOverlay(codes = scannedCodes, previewRef = previewRef, modifier = Modifier.fillMaxSize())
 
         Column(
             modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
@@ -110,6 +123,8 @@ fun CameraScreen() {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
+                frameStats = frameStats.takeIf { enableFrameProcessor },
+                scannedCodes = scannedCodes.mapNotNull { it.value },
                 error = lastError,
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,8 +173,12 @@ fun CameraScreen() {
                                 }
                             }
                         },
-                        enabled = controller != null,
+                        enabled = controller != null && !enableFrameProcessor,
                     ) { Text(if (recorder != null) "Stop" else "Record") }
+                    FilledTonalButton(
+                        onClick = { enableFrameProcessor = !enableFrameProcessor },
+                        enabled = recorder == null,
+                    ) { Text(if (enableFrameProcessor) "Frames off" else "Frames") }
                     thumbnail?.let {
                         Image(
                             bitmap = it,
@@ -202,6 +221,8 @@ private fun StatusPanel(
     isRunning: Boolean,
     isRecording: Boolean,
     lastVideo: String?,
+    frameStats: String?,
+    scannedCodes: List<String>,
     error: String?,
 ) {
     Column(
@@ -219,6 +240,8 @@ private fun StatusPanel(
         }
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
+        if (frameStats != null) Text("Frames: $frameStats", color = Color.White)
+        scannedCodes.forEach { Text("Code: $it", color = Color.Green) }
         if (error != null) Text("Error: $error", color = Color.Red)
     }
 }
