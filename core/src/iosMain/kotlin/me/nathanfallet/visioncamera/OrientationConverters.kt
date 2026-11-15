@@ -20,8 +20,12 @@ import kotlin.math.PI
 // Port of V5's UI+CameraOrientation.swift, UIImageOrientation+exif.swift, CG+CameraOrientation.swift and
 // CameraOrientation+degrees.swift.
 
-/** Converts this [CameraOrientation] to a [UIImageOrientation], mirrored if [isMirrored]. */
-internal fun CameraOrientation.toUIImageOrientation(isMirrored: Boolean): UIImageOrientation = when (this) {
+/**
+ * Converts this [CameraOrientation] to a [UIImageOrientation], mirrored if [isMirrored].
+ *
+ * This is an extension point for plugin modules, e.g. to orient a [NativeFrame]'s buffer for Vision or ML Kit.
+ */
+fun CameraOrientation.toUIImageOrientation(isMirrored: Boolean = false): UIImageOrientation = when (this) {
     CameraOrientation.UP ->
         if (isMirrored) UIImageOrientation.UIImageOrientationUpMirrored else UIImageOrientation.UIImageOrientationUp
     CameraOrientation.DOWN ->

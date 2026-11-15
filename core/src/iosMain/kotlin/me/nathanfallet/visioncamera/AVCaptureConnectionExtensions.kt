@@ -48,8 +48,11 @@ internal fun AVCaptureConnection.isConnectedTo(output: ResolvedCameraSessionConn
 /**
  * The resolution of the stream currently flowing through this connection's first input port, in sensor-native
  * (un-rotated) pixels, or `null` until the session is configured.
+ *
+ * This is an extension point for plugin modules, e.g. to implement a [NativeCameraOutput]'s
+ * [CameraOutput.currentResolution] from its output's video connection.
  */
-internal val AVCaptureConnection.inputStreamResolution: Size?
+val AVCaptureConnection.inputStreamResolution: Size?
     get() {
         val formatDescription = connectionInputPorts.firstOrNull()?.formatDescription ?: return null
         return CMVideoFormatDescriptionGetDimensions(formatDescription).toSize()

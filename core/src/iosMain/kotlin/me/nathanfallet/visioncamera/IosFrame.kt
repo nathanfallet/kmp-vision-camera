@@ -24,9 +24,15 @@ import kotlin.native.ref.createCleaner
 
 /**
  * Gives access to the native `CMSampleBuffer` of a [Frame] (port of V5's `Public/NativeFrame.swift`).
+ *
+ * This is an extension point for plugin modules, which read the frame's native buffer through it:
+ * ```kotlin
+ * val sampleBuffer = (frame as NativeFrame).sampleBuffer
+ * val pixelBuffer = sampleBuffer?.let { CMSampleBufferGetImageBuffer(it) }
+ * ```
  */
-internal interface NativeFrame {
-    /** The frame's sample buffer, or `null` once it has been disposed. */
+interface NativeFrame {
+    /** The frame's sample buffer, or `null` once it has been disposed. It is invalidated when the frame is disposed. */
     val sampleBuffer: CMSampleBufferRef?
 
     /** The frame's timestamp, orientation and mirroring. */

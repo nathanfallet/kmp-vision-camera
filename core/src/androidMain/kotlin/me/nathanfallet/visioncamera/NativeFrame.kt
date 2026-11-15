@@ -3,7 +3,10 @@ package me.nathanfallet.visioncamera
 import androidx.camera.core.ImageProxy
 
 /**
- * A [Frame] or [Depth] created by VisionCamera on Android, backed by a CameraX [ImageProxy].
+ * A [Frame] or [Depth] created by VisionCamera on Android, backed by a CameraX [ImageProxy] (port of V5's
+ * `public/NativeFrame.kt`).
+ *
+ * This is an extension point for plugin modules, which read the frame's native buffer through it.
  *
  * Cast a [Frame] to a [NativeFrame] to access its [image], e.g. for ML Kit:
  * ```kotlin

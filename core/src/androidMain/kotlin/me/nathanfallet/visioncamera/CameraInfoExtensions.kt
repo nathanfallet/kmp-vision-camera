@@ -144,8 +144,13 @@ internal fun CameraCharacteristics.getSupportedResolutions(outputStreamType: Out
     return sizes.distinct().map { it.toSize() }
 }
 
-/** Converts an Android [android.util.Size] to a [Size]. */
-internal fun android.util.Size.toSize(): Size = Size(width, height)
+/**
+ * Converts an Android [android.util.Size] to a [Size].
+ *
+ * This is an extension point for plugin modules, e.g. to implement a [NativeCameraOutput]'s
+ * [CameraOutput.currentResolution] from its use case's `resolutionInfo`.
+ */
+fun android.util.Size.toSize(): Size = Size(width, height)
 
 /** Converts an Android [android.util.Range] to a [Range]. */
 internal fun android.util.Range<Int>.toRange(): Range = Range(lower.toDouble(), upper.toDouble())

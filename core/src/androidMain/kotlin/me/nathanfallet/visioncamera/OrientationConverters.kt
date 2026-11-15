@@ -11,8 +11,13 @@ private const val DEGREES_270 = 270
 private const val DEGREES_315 = 315
 private const val DEGREES_360 = 360
 
-/** The `Surface.ROTATION_*` value of this [CameraOrientation], used as a CameraX target rotation. */
-internal val CameraOrientation.surfaceRotation: Int
+/**
+ * The `Surface.ROTATION_*` value of this [CameraOrientation], used as a CameraX target rotation.
+ *
+ * This is an extension point for plugin modules, e.g. to set the `targetRotation` of a [NativeCameraOutput]'s use
+ * case when its [CameraOutput.outputOrientation] changes.
+ */
+val CameraOrientation.surfaceRotation: Int
     get() = when (this) {
         CameraOrientation.UP -> Surface.ROTATION_0
         CameraOrientation.DOWN -> Surface.ROTATION_180

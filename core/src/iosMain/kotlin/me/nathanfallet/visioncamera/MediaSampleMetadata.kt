@@ -9,15 +9,21 @@ import platform.CoreMedia.CMTimeConvertScale
 import platform.CoreMedia.kCMTimeRoundingMethod_Default
 import platform.Foundation.NSNumber
 import platform.ImageIO.kCGImagePropertyOrientation
+import platform.UIKit.UIImageOrientation
 
 // Port of V5's Public/MediaSampleMetadata.swift and AVCapturePhoto+getMediaSampleMetadata.swift.
 
 /**
  * The timestamp, orientation and mirroring of a captured media sample.
+ *
+ * This is an extension point for plugin modules, available on a [NativeFrame] or a [NativeDepth].
  */
-internal data class MediaSampleMetadata(
+data class MediaSampleMetadata(
+    /** The presentation timestamp of the sample. */
     val timestamp: CValue<CMTime>,
+    /** The orientation of the sample, relative to its output. */
     val orientation: CameraOrientation,
+    /** Whether the sample is mirrored, relative to its output. */
     val isMirrored: Boolean,
 ) {
     /** The [timestamp], in nanoseconds. */
@@ -25,7 +31,11 @@ internal data class MediaSampleMetadata(
         get() = CMTimeConvertScale(timestamp, NANOSECONDS_PER_SECOND, kCMTimeRoundingMethod_Default)
             .useContents { value }
 
-    companion object {
+    /** The [UIImageOrientation] of the sample, combining its [orientation] and [isMirrored]. */
+    val uiImageOrientation: UIImageOrientation
+        get() = orientation.toUIImageOrientation(isMirrored)
+
+    internal companion object {
         /** The timescale of nanosecond timestamps. */
         private const val NANOSECONDS_PER_SECOND = 1_000_000_000
 

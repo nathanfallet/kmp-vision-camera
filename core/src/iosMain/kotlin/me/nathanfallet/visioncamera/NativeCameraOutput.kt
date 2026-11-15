@@ -8,23 +8,40 @@ import platform.AVFoundation.AVCaptureVideoPreviewLayer
 
 /**
  * The kind of stream a [ResolutionNegotiationParticipant] negotiates a resolution for.
+ *
+ * This is an extension point for plugin modules, see [NativeCameraOutput].
  */
-internal enum class StreamType {
+enum class StreamType {
+    /** A video stream (video recording, frame processing, ...). */
     VIDEO,
+
+    /** A photo stream. */
     PHOTO,
+
+    /** A depth video stream. */
     DEPTH_VIDEO,
+
+    /** A depth photo stream. */
     DEPTH_PHOTO,
 }
 
 /**
  * The resolution an output would like to stream at.
+ *
+ * This is an extension point for plugin modules, see [NativeCameraOutput].
  */
-internal sealed interface ResolutionRule {
+sealed interface ResolutionRule {
     /** A resolution as close as possible to [size]. */
-    data class ClosestTo(val size: Size) : ResolutionRule
+    data class ClosestTo(
+        /** The target resolution. */
+        val size: Size,
+    ) : ResolutionRule
 
     /** Any resolution covering at least [size]. */
-    data class Min(val size: Size) : ResolutionRule
+    data class Min(
+        /** The minimum resolution. */
+        val size: Size,
+    ) : ResolutionRule
 
     /** Any resolution. */
     data object Any : ResolutionRule
@@ -35,8 +52,10 @@ internal sealed interface ResolutionRule {
  *
  * This is required for using a [ResolutionBiasConstraint] for the given Camera Output, so the Camera pipeline can
  * internally figure out a most suitable resolution for all outputs.
+ *
+ * This is an extension point for plugin modules, see [NativeCameraOutput].
  */
-internal interface ResolutionNegotiationParticipant {
+interface ResolutionNegotiationParticipant {
     /** The target resolution of this output, negotiated with other outputs and [ResolutionBiasConstraint]s. */
     val targetResolution: ResolutionRule
 
@@ -46,16 +65,22 @@ internal interface ResolutionNegotiationParticipant {
 
 /**
  * The configuration applied to an output when the [CameraSession] is configured.
+ *
+ * This is an extension point for plugin modules, passed to [NativeCameraOutput.configure].
  */
-internal data class OutputConfiguration(
+data class OutputConfiguration(
+    /** The [MirrorMode] the output should apply. */
     val mirrorMode: MirrorMode,
 )
 
 /**
  * A [CameraOutput] backed by an [AVCaptureOutput] (photo, video, frames...), that is added to the
  * `AVCaptureSession` and manually connected to its input in [CameraSession.configure].
+ *
+ * This is an extension point for plugin modules: a module (e.g. `barcode`) adds its own output to a [CameraSession]
+ * by implementing [NativeCameraOutput], and the session connects its [output] like the built-in outputs'.
  */
-internal interface NativeCameraOutput : CameraOutput, ResolutionNegotiationParticipant {
+interface NativeCameraOutput : CameraOutput, ResolutionNegotiationParticipant {
     /** The actual [AVCaptureOutput] that should be added to the `AVCaptureSession`. */
     val output: AVCaptureOutput
 

@@ -23,8 +23,10 @@ import kotlin.native.ref.createCleaner
 
 /**
  * Gives access to the native [AVDepthData] of a [Depth] (port of V5's `Public/NativeDepth.swift`).
+ *
+ * This is an extension point for plugin modules, which read the depth's native data through it.
  */
-internal interface NativeDepth {
+interface NativeDepth {
     /** The depth data, or `null` once it has been disposed. */
     val depthData: AVDepthData?
 
