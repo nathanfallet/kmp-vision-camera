@@ -33,6 +33,10 @@ Kotlin API, from a simple preview to advanced session configuration, photo, vide
   renderer and a frame converter.
 * **Barcode scanning** – the `barcode` module ports VisionCamera's barcode scanner, with the same API on both
   platforms: ML Kit on Android, Apple Vision on iOS (nothing to add to your app).
+* **Location** – the `location` module ports VisionCamera's location: a `LocationManager` (Google Play Services on
+  Android, CoreLocation on iOS) and location tags in photos and videos.
+* **Frame resizer** – the `resizer` module resizes and converts frames to RGB tensors for ML models on the GPU, with
+  Metal on iOS and Vulkan on Android.
 * **Coroutines first** – every asynchronous operation is a `suspend` function.
 * **Compose optional** – the engine has no Compose dependency and works with Android Views, UIKit or SwiftUI; the
   `compose` module adds `Camera`, `NativePreviewView` and `remember*` helpers.
@@ -53,7 +57,9 @@ Early development. What works today:
 - [x] Depth output, object output (iOS) and output synchronizer (iOS)
 - [x] Automatic output orientation (device or interface), subject area changes
 - [x] Barcode scanner (`barcode`, `barcode-compose`): frames, images, camera output and `CodeScanner`
-- [ ] Location, resizer, Skia
+- [x] Location (`location`, `location-compose`): `LocationManager`, `rememberLocation`, location tags in photos and videos
+- [x] Resizer (`resizer`, `resizer-compose`): GPU resize and RGB conversion of frames for ML models (Metal, Vulkan)
+- [ ] Skia
 
 ## Modules
 
@@ -63,6 +69,10 @@ Early development. What works today:
 | `compose` | Compose Multiplatform integration: `Camera`, `NativePreviewView`, `NativeFrameRendererView`, `remember*` |
 | `barcode` | Barcode scanning on frames, images or as a camera output |
 | `barcode-compose` | Compose integration of `barcode`: `CodeScanner`, `rememberBarcodeScanner`, `rememberBarcodeScannerOutput` |
+| `location` | Device location (`LocationManager`) to embed in photos and videos |
+| `location-compose` | Compose integration of `location`: `rememberLocation`, `rememberLocationManager` |
+| `resizer` | GPU frame resizer and RGB converter for ML models, with Metal and Vulkan |
+| `resizer-compose` | Compose integration of `resizer`: `rememberResizer` |
 
 ## Installation
 
@@ -77,6 +87,12 @@ dependencies {
     implementation("me.nathanfallet.visioncamera:barcode:0.1.0")
     // Optional, for barcode scanning with Compose Multiplatform:
     implementation("me.nathanfallet.visioncamera:barcode-compose:0.1.0")
+    // Optional, for location tags in photos and videos (and its Compose helpers):
+    implementation("me.nathanfallet.visioncamera:location:0.1.0")
+    implementation("me.nathanfallet.visioncamera:location-compose:0.1.0")
+    // Optional, for resizing frames on the GPU (and its Compose helper):
+    implementation("me.nathanfallet.visioncamera:resizer:0.1.0")
+    implementation("me.nathanfallet.visioncamera:resizer-compose:0.1.0")
 }
 ```
 
@@ -89,7 +105,8 @@ On Android, declare the permissions you need in your `AndroidManifest.xml`:
 ```
 
 On iOS, add `NSCameraUsageDescription` (and `NSMicrophoneUsageDescription` if you record audio) to your
-`Info.plist`.
+`Info.plist`. For location tags, add `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` on Android, and
+`NSLocationWhenInUseUsageDescription` on iOS.
 
 ## Usage
 
@@ -159,6 +176,40 @@ val barcodeOutput = rememberBarcodeScannerOutput(
     onError = { println(it) },
 )
 Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(barcodeOutput))
+```
+
+### Location
+
+```kotlin
+val location = rememberLocation()
+LaunchedEffect(location.hasPermission) {
+    if (!location.hasPermission) location.requestPermission()
+}
+
+// Embed it in photos and videos
+val photo = photoOutput.capturePhoto(CapturePhotoSettings(location = location.currentLocation))
+```
+
+### Resizing frames for ML models
+
+```kotlin
+val resizer = rememberResizer(
+    ResizerOptions(
+        width = 192,
+        height = 192,
+        channelOrder = ChannelOrder.RGB,
+        dataType = DataType.FLOAT32,
+        scaleMode = ScaleMode.COVER,
+        pixelLayout = PixelLayout.PLANAR,
+    ),
+).resizer
+val frameOutput = rememberFrameOutput(FrameOutputOptions(pixelFormat = TargetVideoPixelFormat.YUV)) { frame ->
+    frame.use {
+        resizer?.resize(it)?.use { resized ->
+            val pixels = resized.getPixelBuffer() // 192x192 RGB float32, planar
+        }
+    }
+}
 ```
 
 ### Imperative API
