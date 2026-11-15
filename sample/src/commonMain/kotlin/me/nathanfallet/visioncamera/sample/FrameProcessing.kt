@@ -12,14 +12,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import me.nathanfallet.visioncamera.CameraDepthFrameOutput
 import me.nathanfallet.visioncamera.CameraFrameOutput
 import me.nathanfallet.visioncamera.CameraObjectOutput
-import me.nathanfallet.visioncamera.Frame
 import me.nathanfallet.visioncamera.FrameOutputOptions
 import me.nathanfallet.visioncamera.ScannedCode
 import me.nathanfallet.visioncamera.ScannedObjectType
 import me.nathanfallet.visioncamera.TargetVideoPixelFormat
+import me.nathanfallet.visioncamera.VisionCameraException
 import me.nathanfallet.visioncamera.compose.PreviewViewRef
+import me.nathanfallet.visioncamera.compose.rememberDepthOutput
 import me.nathanfallet.visioncamera.compose.rememberFrameOutput
 import me.nathanfallet.visioncamera.compose.rememberObjectOutput
 import kotlin.math.roundToInt
@@ -36,24 +38,43 @@ internal fun rememberFrameStats(): Pair<CameraFrameOutput, String?> {
     var stats by remember { mutableStateOf<String?>(null) }
     val counter = remember { FrameCounter() }
     val frameOutput = rememberFrameOutput(FrameOutputOptions(pixelFormat = TargetVideoPixelFormat.YUV)) { frame ->
-        frame.use { counter.onFrame(it)?.let { text -> stats = text } }
+        frame.use { counter.onFrame { "${it.width}x${it.height} ${it.pixelFormat}" }?.let { text -> stats = text } }
     }
     return frameOutput to stats
 }
 
-/** Counts frames on the frame output's thread, and returns a summary once per second. */
+/**
+ * A depth output measuring how many depth frames per second arrive, with their size and whether they have camera
+ * calibration data (like VisionCamera's example app, which logs them and disposes them).
+ */
+@Composable
+internal fun rememberDepthStats(): Pair<CameraDepthFrameOutput, String?> {
+    var stats by remember { mutableStateOf<String?>(null) }
+    val counter = remember { FrameCounter() }
+    val depthOutput = rememberDepthOutput { depth ->
+        val text = counter.onFrame {
+            val calibration = if (depth.cameraCalibrationData != null) "with" else "no"
+            "${depth.width}x${depth.height} ${depth.pixelFormat}, $calibration calibration data"
+        }
+        depth.dispose()
+        text?.let { stats = it }
+    }
+    return depthOutput to stats
+}
+
+/** Counts frames on the output's thread, and returns (and logs) a summary once per second. */
 private class FrameCounter {
     private var windowStart = TimeSource.Monotonic.markNow()
     private var count = 0
 
-    fun onFrame(frame: Frame): String? {
+    fun onFrame(describe: () -> String): String? {
         count++
         val elapsed = windowStart.elapsedNow()
         if (elapsed.inWholeMilliseconds < WINDOW_MS) return null
         val fps = count * MS_PER_SECOND / elapsed.inWholeMilliseconds.toDouble()
         windowStart = TimeSource.Monotonic.markNow()
         count = 0
-        return "${fps.roundToInt()} FPS, ${frame.width}x${frame.height} ${frame.pixelFormat}"
+        return "${fps.roundToInt()} FPS, ${describe()}".also { println("VisionCameraSample stream: $it") }
     }
 
     private companion object {
@@ -82,7 +103,13 @@ internal fun ScannedCodesOverlay(codes: List<ScannedCode>, previewRef: PreviewVi
     Canvas(modifier) {
         if (!previewRef.isReady) return@Canvas
         codes.forEach { code ->
-            val viewCode = previewRef.convertScannedObjectCoordinatesToViewCoordinates(code) as ScannedCode
+            // An object scanned just before the session was reconfigured (e.g. when flipping the camera) cannot be
+            // transformed by the new preview anymore: skip it until the next scan.
+            val viewCode = try {
+                previewRef.convertScannedObjectCoordinatesToViewCoordinates(code) as ScannedCode
+            } catch (_: VisionCameraException) {
+                return@forEach
+            }
             val points = viewCode.cornerPoints.map { Offset(it.x.toFloat(), it.y.toFloat()) }
             if (points.size < 2) return@forEach
             val path = Path().apply {

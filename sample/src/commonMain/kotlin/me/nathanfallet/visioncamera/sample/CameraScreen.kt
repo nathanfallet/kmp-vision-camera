@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraDevice
 import me.nathanfallet.visioncamera.FPSConstraint
+import me.nathanfallet.visioncamera.MediaType
 import me.nathanfallet.visioncamera.Recorder
 import me.nathanfallet.visioncamera.TargetCameraPosition
 import me.nathanfallet.visioncamera.TorchMode
@@ -65,11 +66,14 @@ private enum class StreamMode {
 
     /** The barcode scanner output, scanning all barcode formats. */
     CODES,
+
+    /** The depth output, measuring the depth frames' FPS. */
+    DEPTH,
 }
 
 /**
  * The camera screen: a full-screen preview with tap-to-focus, and controls to take photos, record videos, process
- * frames, scan barcodes, switch devices, zoom, toggle the torch and pause the session.
+ * frames or depth, scan barcodes, switch devices, zoom, toggle the torch and pause the session.
  */
 @Composable
 fun CameraScreen() {
@@ -88,11 +92,17 @@ fun CameraScreen() {
     val scope = rememberCoroutineScope()
 
     val defaultDevice = rememberCameraDevice(position)
-    val device = selectedDevice ?: defaultDevice
+    // Only some Cameras capture depth (e.g. the dual or TrueDepth Cameras, not the back wide-angle Camera of an
+    // iPhone 11), like in VisionCamera: the depth mode picks one at the same position.
+    val depthDevice = rememberCameraDevices().firstOrNull {
+        it.position.name == position.name && MediaType.DEPTH in it.mediaTypes
+    }
+    val device = selectedDevice ?: depthDevice?.takeIf { streamMode == StreamMode.DEPTH } ?: defaultDevice
     val previewOutput = rememberPreviewOutput()
     val photoOutput = rememberPhotoOutput()
     val videoOutput = rememberVideoOutput()
     val (frameOutput, frameStats) = rememberFrameStats()
+    val (depthOutput, depthStats) = rememberDepthStats()
     val (objectOutput, scannedCodes) = rememberObjectCodeScanner()
     val barcodeScan = rememberBarcodeScan()
     val previewRef = rememberPreviewViewRef()
@@ -106,6 +116,7 @@ fun CameraScreen() {
                 StreamMode.VIDEO -> videoOutput
                 StreamMode.FRAMES -> frameOutput
                 StreamMode.CODES -> barcodeScan.output
+                StreamMode.DEPTH -> depthOutput
             },
             objectOutput,
         ),
@@ -153,7 +164,11 @@ fun CameraScreen() {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
-                frameStats = frameStats.takeIf { streamMode == StreamMode.FRAMES },
+                streamStats = when (streamMode) {
+                    StreamMode.FRAMES -> frameStats?.let { "Frames: $it" }
+                    StreamMode.DEPTH -> depthStats?.let { "Depth: $it" }
+                    else -> null
+                },
                 scannedCodes = scannedCodes.mapNotNull { it.value },
                 barcode = barcodeScan.lastBarcode?.describe()?.takeIf { streamMode == StreamMode.CODES },
                 error = lastError ?: barcodeScan.error?.takeIf { streamMode == StreamMode.CODES },
@@ -206,9 +221,6 @@ fun CameraScreen() {
                         },
                         enabled = controller != null && streamMode == StreamMode.VIDEO,
                     ) { Text(if (recorder != null) "Stop" else "Record") }
-                    listOf("Frames" to StreamMode.FRAMES, "Codes" to StreamMode.CODES).forEach { (label, mode) ->
-                        ModeButton(label, mode, current = streamMode, enabled = recorder == null) { streamMode = it }
-                    }
                     thumbnail?.let {
                         Image(
                             bitmap = it,
@@ -217,6 +229,12 @@ fun CameraScreen() {
                             modifier = Modifier.size(56.dp).clip(MaterialTheme.shapes.small),
                         )
                     }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Frames" to StreamMode.FRAMES, "Codes" to StreamMode.CODES, "Depth" to StreamMode.DEPTH)
+                        .forEach { (label, mode) ->
+                            ModeButton(label, mode, current = streamMode, enabled = recorder == null) { streamMode = it }
+                        }
                 }
                 if (controller != null) {
                     ZoomSlider(controller = controller, zoom = zoom ?: controller.zoom, onZoomChange = { zoom = it })
@@ -251,7 +269,7 @@ private fun StatusPanel(
     isRunning: Boolean,
     isRecording: Boolean,
     lastVideo: String?,
-    frameStats: String?,
+    streamStats: String?,
     scannedCodes: List<String>,
     barcode: String?,
     error: String?,
@@ -271,7 +289,7 @@ private fun StatusPanel(
         }
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
-        if (frameStats != null) Text("Frames: $frameStats", color = Color.White)
+        if (streamStats != null) Text(streamStats, color = Color.White)
         scannedCodes.forEach { Text("Object: $it", color = Color.Green) }
         if (barcode != null) Text("Barcode: $barcode", color = Color.Cyan)
         if (error != null) Text("Error: $error", color = Color.Red)
