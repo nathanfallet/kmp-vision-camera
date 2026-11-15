@@ -31,5 +31,5 @@ points in view coordinates:
 val viewCode = previewRef.convertScannedObjectCoordinatesToViewCoordinates(code) as ScannedCode
 ```
 
-On Android, `createObjectOutput` throws, like in VisionCamera. Scan codes with the `barcode` module (ML Kit) on a frame
-output instead (coming soon).
+On Android, `createObjectOutput` throws, like in VisionCamera. Scan codes with [the barcode scanner](barcode-scanner.md)
+instead, which works on both platforms.
