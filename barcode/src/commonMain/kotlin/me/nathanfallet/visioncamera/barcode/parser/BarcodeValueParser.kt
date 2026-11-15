@@ -21,10 +21,10 @@ internal data class ParsedBarcodeValue(
  *
  * The rules follow ML Kit's value types: well-known prefixes (`http://`, `MEBKM:`, `mailto:`, `MATMSG:`, `tel:`,
  * `SMSTO:`, `WIFI:`, `geo:`, `BEGIN:VCARD`, `MECARD:`, `BEGIN:VEVENT`), AAMVA PDF417 driver's licenses, and EAN/UPC
- * product codes (ISBNs for `978`/`979` EAN-13s), else plain text. Like ML Kit, the display value is the main field
- * of structured values (the URL of a bookmark, the SSID of a WiFi config, the number of a phone/SMS, the address of
- * an email, the name of a contact, the summary of an event, the coordinates of a location), and the raw value
- * otherwise.
+ * product codes (ISBNs for `978`/`979` EAN-13s), else plain text. Like ML Kit, the display value is the main
+ * fields of structured values (the URL of a bookmark, the SSID and password of a WiFi config, the number of a phone,
+ * the number and message of an SMS, the address of an email, the name of a contact, the summary of an event), and
+ * the raw value otherwise (including locations).
  */
 internal object BarcodeValueParser {
     /** The prefixes of an ISBN (Bookland) EAN-13. */

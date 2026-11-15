@@ -66,17 +66,24 @@ class BarcodeValueParserTest {
 
     @Test
     fun sms() {
-        assertParsed("SMSTO:+15550100:Hello there", BarcodeValueType.SMS, "+15550100")
+        // Like ML Kit on Android: "SMSTO:+15550100:Bonjour" is displayed as "+15550100\nBonjour"
+        assertParsed("SMSTO:+15550100:Hello there", BarcodeValueType.SMS, "+15550100\nHello there")
         assertParsed("smsto:+15550100", BarcodeValueType.SMS, "+15550100")
-        assertParsed("sms:+15550100?body=Hello", BarcodeValueType.SMS, "+15550100")
+        assertParsed("sms:+15550100?body=Hello%20you", BarcodeValueType.SMS, "+15550100\nHello you")
         assertParsed("sms:+15550100", BarcodeValueType.SMS, "+15550100")
-        assertParsed("MMSTO:+15550100:Hello", BarcodeValueType.SMS, "+15550100")
+        assertParsed("MMSTO:+15550100:Hello", BarcodeValueType.SMS, "+15550100\nHello")
     }
 
     @Test
     fun wifi() {
-        assertParsed("WIFI:T:WPA;S:MyNetwork;P:password;;", BarcodeValueType.WIFI, "MyNetwork")
-        assertParsed("WIFI:S:My\\;Net\\:work;T:WEP;P:pass\\;word;H:true;;", BarcodeValueType.WIFI, "My;Net:work")
+        // Like ML Kit on Android: the SSID and the password
+        assertParsed("WIFI:T:WPA;S:MyNetwork;P:password;;", BarcodeValueType.WIFI, "MyNetwork password")
+        assertParsed(
+            "WIFI:S:My\\;Net\\:work;T:WEP;P:pass\\;word;H:true;;",
+            BarcodeValueType.WIFI,
+            "My;Net:work pass;word",
+        )
+        assertParsed("WIFI:T:nopass;S:Open;P:;;", BarcodeValueType.WIFI, "Open")
         assertParsed("wifi:s:lowercase;;", BarcodeValueType.WIFI, "lowercase")
         // No SSID: not a WiFi config
         assertParsed("WIFI:T:WPA;P:password;;", BarcodeValueType.TEXT, "WIFI:T:WPA;P:password;;")
@@ -84,9 +91,11 @@ class BarcodeValueParserTest {
 
     @Test
     fun geo() {
-        assertParsed("geo:37.786971,-122.399677", BarcodeValueType.GEO, "37.786971,-122.399677")
-        assertParsed("GEO:48.8584,2.2945,330?q=Eiffel+Tower", BarcodeValueType.GEO, "48.8584,2.2945")
-        assertParsed("geo:48.8584,2.2945;u=35", BarcodeValueType.GEO, "48.8584,2.2945")
+        // Like ML Kit on Android: the raw value
+        assertParsed("geo:37.786971,-122.399677", BarcodeValueType.GEO, "geo:37.786971,-122.399677")
+        val geoWithQuery = "GEO:48.8584,2.2945,330?q=Eiffel+Tower"
+        assertParsed(geoWithQuery, BarcodeValueType.GEO, geoWithQuery)
+        assertParsed("geo:48.8584,2.2945;u=35", BarcodeValueType.GEO, "geo:48.8584,2.2945;u=35")
         assertParsed("geo:somewhere", BarcodeValueType.TEXT, "geo:somewhere")
     }
 
