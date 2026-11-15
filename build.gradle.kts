@@ -34,3 +34,14 @@ dependencies {
     kover(projects.barcode)
     kover(projects.barcodeCompose)
 }
+
+// core's iOS code uses an Objective-C cinterop library (see core/build.gradle.kts), which needs Xcode: on other hosts
+// (e.g. the Linux Android CI), Kotlin skips core's iOS compilations, so the iOS code depending on it is skipped too.
+if (!System.getProperty("os.name").startsWith("Mac")) {
+    val iosMetadataCompilation = Regex("compile(Ios|Apple|Native)MainKotlinMetadata")
+    subprojects {
+        tasks.configureEach {
+            if (iosMetadataCompilation.matches(name)) enabled = false
+        }
+    }
+}
