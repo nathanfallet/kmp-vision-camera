@@ -53,10 +53,16 @@ internal class IosPhoto(
 
     override val hasPixelBuffer: Boolean get() = capturedPhoto?.pixelBuffer != null
 
-    // TODO(phase 2): depth and calibration data.
-    override val depth: Depth? = null
+    /** The [depth], created lazily, and disposed together with this photo. */
+    private var cachedDepth: IosDepth? = null
 
-    override val calibrationData: CameraCalibrationData? = null
+    override val depth: Depth?
+        get() = cachedDepth ?: capturedPhoto?.depthData?.let { depthData ->
+            IosDepth(depthData = depthData, metadata = metadata).also { cachedDepth = it }
+        }
+
+    override val calibrationData: CameraCalibrationData?
+        get() = capturedPhoto?.cameraCalibrationData?.toCameraCalibrationData()
 
     override fun getPixelBuffer(): ByteArray {
         val pixelBuffer = photo.pixelBuffer ?: throw VisionCameraException(
@@ -129,6 +135,8 @@ internal class IosPhoto(
 
     override fun dispose() {
         capturedPhoto = null
+        cachedDepth?.dispose()
+        cachedDepth = null
     }
 
     override fun toString(): String = "Photo(${width}x$height, $containerFormat, $orientation)"

@@ -10,14 +10,18 @@ import platform.UIKit.UIInterfaceOrientationUnknown
 import platform.UIKit.UISceneActivationStateForegroundActive
 import platform.UIKit.UIWindowScene
 import platform.darwin.NSObjectProtocol
+import kotlin.concurrent.Volatile
 
 /**
- * Tracks the interface orientation of the app's main window scene (port of V5's
+ * The [OrientationManager] tracking the interface orientation of the app's main window scene (port of V5's
  * `HybridInterfaceOrientationManager.swift`). All work happens on the main thread.
  */
-internal class InterfaceOrientationManager {
+internal class InterfaceOrientationManager : OrientationManager {
+    override val source: OrientationSource = OrientationSource.INTERFACE
+
     /** The last known interface orientation, or `null` if it is not known yet. */
-    var currentOrientation: CameraOrientation? = null
+    @Volatile
+    override var currentOrientation: CameraOrientation? = null
         private set
 
     private var observer: NSObjectProtocol? = null
@@ -32,7 +36,7 @@ internal class InterfaceOrientationManager {
      * Starts listening to interface orientation changes, calling [onChanged] on the main thread with the current
      * orientation, and every time it changes.
      */
-    fun startOrientationUpdates(onChanged: (CameraOrientation) -> Unit) = runOnMainThread {
+    override fun startOrientationUpdates(onChanged: (orientation: CameraOrientation) -> Unit) = runOnMainThread {
         Logger.info("Starting interface orientation updates...")
         val center = NSNotificationCenter.defaultCenter
         observer?.let {
@@ -71,7 +75,7 @@ internal class InterfaceOrientationManager {
     }
 
     /** Stops listening to interface orientation changes. */
-    fun stopOrientationUpdates() = runOnMainThread {
+    override fun stopOrientationUpdates() = runOnMainThread {
         observer?.let {
             Logger.info("Stopping interface orientation updates...")
             NSNotificationCenter.defaultCenter.removeObserver(it)

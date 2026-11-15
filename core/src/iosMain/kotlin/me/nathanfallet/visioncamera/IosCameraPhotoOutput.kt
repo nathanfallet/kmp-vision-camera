@@ -6,6 +6,7 @@ import platform.AVFoundation.AVCaptureConnection
 import platform.AVFoundation.AVCapturePhotoOutput
 import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.CMVideoDimensionsValue
+import platform.AVFoundation.depthDataDeliverySupported
 import platform.CoreMedia.CMVideoDimensions
 import platform.Foundation.NSValue
 
@@ -13,13 +14,15 @@ import platform.Foundation.NSValue
  * The iOS [CameraPhotoOutput], backed by an [AVCapturePhotoOutput] (port of V5's `HybridCameraPhotoOutput.swift`).
  */
 internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : CameraPhotoOutput, NativeCameraOutput {
-    // TODO(phase 2): depth and calibration data delivery.
-    override val supportsDepthDataDelivery: Boolean = false
+    override val supportsDepthDataDelivery: Boolean
+        get() = output.depthDataDeliverySupported
 
-    override val supportsCameraCalibrationDataDelivery: Boolean = false
+    override val supportsCameraCalibrationDataDelivery: Boolean
+        get() = output.cameraCalibrationDataDeliverySupported
 
     override val mediaType: MediaType = MediaType.VIDEO
     override val requiresAudioInput: Boolean = false
+    // Like V5, this stays `false` even if depth data delivery is used.
     override val requiresDepthFormat: Boolean = false
     override val output: AVCapturePhotoOutput = AVCapturePhotoOutput()
 

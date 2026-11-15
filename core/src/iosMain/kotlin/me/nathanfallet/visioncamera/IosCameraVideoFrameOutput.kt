@@ -71,7 +71,7 @@ internal class IosCameraVideoFrameOutput(
             output.preservesDynamicHDRMetadata = true
         }
         // Set the delegate to append to the Recorder
-        delegate.onFrame = { buffer -> onFrame(buffer, TrackType.VIDEO) }
+        delegate.onFrame = { buffer, _, _, _ -> onFrame(buffer, TrackType.VIDEO) }
     }
 
     override fun configure(config: OutputConfiguration) {

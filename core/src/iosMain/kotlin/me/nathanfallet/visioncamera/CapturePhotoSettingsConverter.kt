@@ -7,13 +7,15 @@ import platform.AVFoundation.AVVideoCodecTypeHEVC
 import platform.AVFoundation.AVVideoCodecTypeJPEG
 import platform.AVFoundation.AVVideoCompressionPropertiesKey
 import platform.AVFoundation.AVVideoQualityKey
+import platform.AVFoundation.depthDataDeliveryEnabled
+import platform.AVFoundation.depthDataDeliverySupported
 import platform.Foundation.NSNumber
 import platform.ImageIO.kCGImagePropertyGPSDictionary
 import platform.ImageIO.kCGImagePropertyTIFFDictionary
 import platform.ImageIO.kCGImagePropertyTIFFSoftware
 
-// Port of V5's AV+CapturePhotoSettings.swift. Depth data, calibration data and preview images are not part of the
-// common API yet, so their settings are not ported.
+// Port of V5's AV+CapturePhotoSettings.swift. Preview images are not part of the common API yet, so their settings
+// are not ported.
 
 /** Whether these settings capture a RAW photo. */
 private val AVCapturePhotoSettings.isRAWFormat: Boolean
@@ -26,6 +28,10 @@ private val AVCapturePhotoSettings.isAppleProRAWFormat: Boolean
 /** Whether these settings support `photoQualityPrioritization`: processed formats and Apple ProRAW only. */
 private val AVCapturePhotoSettings.supportsQualityPrioritization: Boolean
     get() = if (isRAWFormat) isAppleProRAWFormat else true
+
+/** Whether these settings support depth data: if we shoot in RAW, we cannot enable it. */
+private val AVCapturePhotoSettings.supportsDepthData: Boolean
+    get() = !isRAWFormat
 
 /** Whether these settings support distortion correction: if we shoot in RAW, we cannot enable it. */
 private val AVCapturePhotoSettings.supportsDistortionCorrection: Boolean
@@ -94,6 +100,7 @@ private fun baseAVCapturePhotoSettings(
  * - Options that are supported are applied.
  * - Options that are not supported but don't directly affect results (e.g. `enableDistortionCorrection`) are
  *   swallowed.
+ * - Options that are not supported but directly affect results (e.g. `enableDepthData`) throw.
  *
  * @throws VisionCameraException If the settings cannot be created (e.g. RAW is not supported).
  */
@@ -117,6 +124,10 @@ internal fun CapturePhotoSettings.toAVCapturePhotoSettings(
     if (isIOSAtLeast(major = 18) && output.shutterSoundSuppressionSupported) {
         settings.shutterSoundSuppressionEnabled = !enableShutterSound
     }
+    // enableDepthData
+    if (enableDepthData) applyDepthDataDelivery(output, settings)
+    // enableCameraCalibrationDataDelivery
+    if (enableCameraCalibrationDataDelivery) applyCameraCalibrationDataDelivery(output, settings)
     // enableRedEyeReduction
     if (output.autoRedEyeReductionSupported) settings.autoRedEyeReductionEnabled = enableRedEyeReduction
     // enableDistortionCorrection
@@ -130,6 +141,44 @@ internal fun CapturePhotoSettings.toAVCapturePhotoSettings(
     settings.addLibraryMetadataTag()
     location?.let { settings.addLocationMetadataTag(it) }
     return settings
+}
+
+/**
+ * Enables depth data delivery on the given [settings].
+ *
+ * Unlike V5 (see its "This is probably broken" note), we enable `depthDataDeliveryEnabled` on the [output] first if
+ * needed: AVFoundation otherwise raises an Objective-C exception at capture time, which would crash the app. Like any
+ * change of `depthDataDeliveryEnabled`, this reconfigures the capture pipeline, so the first capture with depth data
+ * (or [CameraPhotoOutput.prepareSettings]) takes longer.
+ */
+private fun applyDepthDataDelivery(output: AVCapturePhotoOutput, settings: AVCapturePhotoSettings) {
+    if (!settings.supportsDepthData) {
+        throw VisionCameraException(
+            "Depth Data is only available in processed photo formats such as JPEG or HEIC - not in RAW/DNG!",
+        )
+    }
+    if (!output.depthDataDeliverySupported) {
+        throw VisionCameraException("`enableDepthData` is not supported on this PhotoOutput!")
+    }
+    if (!output.depthDataDeliveryEnabled) output.depthDataDeliveryEnabled = true
+    settings.depthDataDeliveryEnabled = true
+    settings.embedsDepthDataInPhoto = true
+}
+
+/**
+ * Enables camera calibration data delivery on the given [settings].
+ *
+ * Unlike V5, we also require depth data delivery on the [settings] (the only way to get calibration data in our API):
+ * AVFoundation otherwise raises an Objective-C exception at capture time, which would crash the app.
+ */
+private fun applyCameraCalibrationDataDelivery(output: AVCapturePhotoOutput, settings: AVCapturePhotoSettings) {
+    if (!output.cameraCalibrationDataDeliverySupported) {
+        throw VisionCameraException("`enableCameraCalibrationDataDelivery` is not supported on this PhotoOutput!")
+    }
+    if (!settings.depthDataDeliveryEnabled) {
+        throw VisionCameraException("`enableCameraCalibrationDataDelivery` requires `enableDepthData` on iOS!")
+    }
+    settings.cameraCalibrationDataDeliveryEnabled = true
 }
 
 private fun AVCapturePhotoSettings.addLibraryMetadataTag() {
