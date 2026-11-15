@@ -8,6 +8,7 @@ import me.nathanfallet.visioncamera.PreviewImplementationMode
 import me.nathanfallet.visioncamera.PreviewResizeMode
 import me.nathanfallet.visioncamera.PreviewView
 
+/** Displays the Camera feed in an AVFoundation-backed iOS [PreviewView], see the common declaration. */
 @Suppress("LongParameterList", "UnusedParameter")
 @Composable
 actual fun NativePreviewView(

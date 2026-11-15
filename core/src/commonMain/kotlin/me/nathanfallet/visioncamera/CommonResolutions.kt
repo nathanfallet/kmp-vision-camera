@@ -36,9 +36,11 @@ object CommonResolutions {
     val UHD_4_3: Size = Size(3024, 4032)
 
     /** 4536x8064 (16:9). */
+    @Suppress("ObjectPropertyNaming")
     val `8K_16_9`: Size = Size(4536, 8064)
 
     /** 6048x8064 (4:3). */
+    @Suppress("ObjectPropertyNaming")
     val `8K_4_3`: Size = Size(6048, 8064)
 
     /** The lowest possible 16:9 resolution. */

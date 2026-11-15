@@ -91,7 +91,9 @@ interface CameraSession {
      * Adds a listener called when the [CameraSession] was interrupted, for example when the phone overheated, or
      * the user received a call.
      */
-    fun addOnInterruptionStartedListener(onInterruptionStarted: (reason: InterruptionReason) -> Unit): ListenerSubscription
+    fun addOnInterruptionStartedListener(
+        onInterruptionStarted: (reason: InterruptionReason) -> Unit,
+    ): ListenerSubscription
 
     /** Adds a listener called when an interruption has ended and the Camera runs again. */
     fun addOnInterruptionEndedListener(onInterruptionEnded: () -> Unit): ListenerSubscription

@@ -37,7 +37,10 @@ internal class AndroidPreviewOutput : CameraPreviewOutput, NativeCameraOutput {
         }
     }
 
-    override fun createUseCase(mirrorMode: MirrorMode, config: NativeCameraOutput.Config): NativeCameraOutput.PreparedUseCase {
+    override fun createUseCase(
+        mirrorMode: MirrorMode,
+        config: NativeCameraOutput.Config,
+    ): NativeCameraOutput.PreparedUseCase {
         val preview = Preview.Builder().apply {
             setMirrorMode(mirrorMode.toCameraXMirrorMode())
             when (config.previewStabilizationMode) {

@@ -8,6 +8,7 @@ import me.nathanfallet.visioncamera.PreviewImplementationMode
 import me.nathanfallet.visioncamera.PreviewResizeMode
 import me.nathanfallet.visioncamera.PreviewView
 
+/** Displays the Camera feed in a CameraX-backed Android [PreviewView], see the common declaration. */
 @Suppress("LongParameterList")
 @Composable
 actual fun NativePreviewView(

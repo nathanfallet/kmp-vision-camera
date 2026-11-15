@@ -71,28 +71,20 @@ private fun multiCameraName(physicalCameraCount: Int): String? = when (physicalC
 }
 
 /** The [DeviceType] of this camera. */
-internal fun CameraInfo.deviceType(isPhysical: Boolean): DeviceType {
-    if (isPhysical) {
-        // Physical camera infos throw when accessing `intrinsicZoomRatio`.
-        return DeviceType.UNKNOWN
+internal fun CameraInfo.deviceType(isPhysical: Boolean): DeviceType = when {
+    // Physical camera infos throw when accessing `intrinsicZoomRatio`.
+    isPhysical -> DeviceType.UNKNOWN
+    physicalCameraInfos.size > 1 -> when (multiCameraName(physicalCameraInfos.size)) {
+        "Dual" -> DeviceType.DUAL
+        "Triple" -> DeviceType.TRIPLE
+        "Quad" -> DeviceType.QUAD
+        else -> DeviceType.UNKNOWN
     }
-    if (physicalCameraInfos.size > 1) {
-        return when (multiCameraName(physicalCameraInfos.size)) {
-            "Dual" -> DeviceType.DUAL
-            "Triple" -> DeviceType.TRIPLE
-            "Quad" -> DeviceType.QUAD
-            else -> DeviceType.UNKNOWN
-        }
-    }
-    if (cameraCharacteristicsOrNull?.supportsDepthOnly == true) {
-        // If it supports only DEPTH, it's a ToF Depth Camera
-        return DeviceType.TIME_OF_FLIGHT_DEPTH
-    }
-    return when {
-        intrinsicZoomRatio < 1f -> DeviceType.ULTRA_WIDE_ANGLE
-        intrinsicZoomRatio > 1f -> DeviceType.TELEPHOTO
-        else -> DeviceType.WIDE_ANGLE
-    }
+    // If it supports only DEPTH, it's a ToF Depth Camera
+    cameraCharacteristicsOrNull?.supportsDepthOnly == true -> DeviceType.TIME_OF_FLIGHT_DEPTH
+    intrinsicZoomRatio < 1f -> DeviceType.ULTRA_WIDE_ANGLE
+    intrinsicZoomRatio > 1f -> DeviceType.TELEPHOTO
+    else -> DeviceType.WIDE_ANGLE
 }
 
 private val CameraCharacteristics.outputFormats: IntArray

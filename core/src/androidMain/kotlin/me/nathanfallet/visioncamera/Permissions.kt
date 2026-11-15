@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package me.nathanfallet.visioncamera
 
 import android.content.Context
@@ -88,7 +90,11 @@ internal suspend fun Context.requestPermission(permission: String): Boolean = wi
                 PermissionStateStore.setPermissionPermanentlyDenied(this@requestPermission, permission, false)
             } else {
                 val canRequestAgain = ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
-                PermissionStateStore.setPermissionPermanentlyDenied(this@requestPermission, permission, !canRequestAgain)
+                PermissionStateStore.setPermissionPermanentlyDenied(
+                    this@requestPermission,
+                    permission,
+                    !canRequestAgain,
+                )
             }
             if (continuation.isActive) continuation.resume(hasPermission)
         }

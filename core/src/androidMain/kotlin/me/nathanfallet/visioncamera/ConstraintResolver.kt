@@ -167,7 +167,8 @@ private fun Constraint.getNextBestOption(): Constraint? = when (this) {
         videoStabilizationMode.getNextBestMode()?.let { VideoStabilizationModeConstraint(it) }
     is PreviewStabilizationModeConstraint ->
         previewStabilizationMode.getNextBestMode()?.let { PreviewStabilizationModeConstraint(it) }
-    is VideoDynamicRangeConstraint -> videoDynamicRange.getNextBestDynamicRange()?.let { VideoDynamicRangeConstraint(it) }
+    is VideoDynamicRangeConstraint ->
+        videoDynamicRange.getNextBestDynamicRange()?.let { VideoDynamicRangeConstraint(it) }
     // FPS is never in the downgrade loop, Photo HDR is on or off, and the others have no fallback.
     is FPSConstraint, is ResolutionBiasConstraint, is PhotoHDRConstraint, is PixelFormatConstraint,
     is BinnedConstraint,

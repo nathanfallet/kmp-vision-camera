@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 /**
  * The Android [CameraSession], binding CameraX use-cases to a [CameraSessionLifecycle].
  */
+@Suppress("TooManyFunctions")
 internal class AndroidCameraSession(
     private val cameraProvider: ProcessCameraProvider,
     private val enableMultiCam: Boolean,
@@ -94,13 +95,19 @@ internal class AndroidCameraSession(
             val cameraInfo = cameraProvider.getCameraInfo(connection.input)
             val preparedUseCases = connection.outputs.map { outputConfiguration ->
                 val output = outputConfiguration.output as? NativeCameraOutput
-                    ?: throw VisionCameraException("Output ${outputConfiguration.output} was not created by VisionCamera!")
+                    ?: throw VisionCameraException(
+                        "Output ${outputConfiguration.output} was not created by VisionCamera!",
+                    )
                 output.createUseCase(outputConfiguration.mirrorMode, outputConfig)
             }
             allPreparedUseCases.addAll(preparedUseCases)
             val useCaseGroup = UseCaseGroup.Builder()
             preparedUseCases.forEach { useCaseGroup.addUseCase(it.useCase) }
-            ConcurrentCamera.SingleCameraConfig(cameraInfo.cameraSelector, useCaseGroup.build(), requireLifecycleOwner())
+            ConcurrentCamera.SingleCameraConfig(
+                cameraInfo.cameraSelector,
+                useCaseGroup.build(),
+                requireLifecycleOwner(),
+            )
         }
         val concurrentCamera = cameraProvider.bindToLifecycle(configs)
         allPreparedUseCases.forEach { it.notifyAttached() }

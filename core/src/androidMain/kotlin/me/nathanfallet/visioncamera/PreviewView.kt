@@ -22,7 +22,7 @@ class PreviewView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
-    private val previewView = CameraXPreviewView(context)
+    private val cameraXPreviewView = CameraXPreviewView(context)
     private var isPreviewing = false
     private val streamStateObserver = Observer<CameraXPreviewView.StreamState> { onStreamStateChanged(it) }
 
@@ -42,7 +42,7 @@ class PreviewView @JvmOverloads constructor(
     var resizeMode: PreviewResizeMode = PreviewResizeMode.COVER
         set(value) {
             field = value
-            previewView.scaleType = when (value) {
+            cameraXPreviewView.scaleType = when (value) {
                 PreviewResizeMode.COVER -> CameraXPreviewView.ScaleType.FILL_CENTER
                 PreviewResizeMode.CONTAIN -> CameraXPreviewView.ScaleType.FIT_CENTER
             }
@@ -56,7 +56,7 @@ class PreviewView @JvmOverloads constructor(
         set(value) {
             if (field == value) return
             field = value
-            previewView.implementationMode = when (value) {
+            cameraXPreviewView.implementationMode = when (value) {
                 PreviewImplementationMode.PERFORMANCE -> CameraXPreviewView.ImplementationMode.PERFORMANCE
                 PreviewImplementationMode.COMPATIBLE -> CameraXPreviewView.ImplementationMode.COMPATIBLE
             }
@@ -71,27 +71,27 @@ class PreviewView @JvmOverloads constructor(
     var onPreviewStopped: (() -> Unit)? = null
 
     init {
-        addView(previewView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        addView(cameraXPreviewView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        previewView.previewStreamState.observeForever(streamStateObserver)
+        cameraXPreviewView.previewStreamState.observeForever(streamStateObserver)
     }
 
     override fun onDetachedFromWindow() {
-        previewView.previewStreamState.removeObserver(streamStateObserver)
+        cameraXPreviewView.previewStreamState.removeObserver(streamStateObserver)
         super.onDetachedFromWindow()
     }
 
     private fun connectPreviewOutput(previewOutput: CameraPreviewOutput) {
         val output = previewOutput as? AndroidPreviewOutput
             ?: throw VisionCameraException("PreviewOutput was not created by VisionCamera!")
-        output.setSurfaceProvider(previewView.surfaceProvider)
+        output.setSurfaceProvider(cameraXPreviewView.surfaceProvider)
     }
 
     private fun disconnectPreviewOutput(previewOutput: CameraPreviewOutput) {
-        (previewOutput as? AndroidPreviewOutput)?.removeSurfaceProvider(previewView.surfaceProvider)
+        (previewOutput as? AndroidPreviewOutput)?.removeSurfaceProvider(cameraXPreviewView.surfaceProvider)
     }
 
     private fun onStreamStateChanged(state: CameraXPreviewView.StreamState) {
