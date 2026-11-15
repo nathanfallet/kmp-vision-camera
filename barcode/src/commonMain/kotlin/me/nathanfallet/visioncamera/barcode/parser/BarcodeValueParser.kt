@@ -23,8 +23,8 @@ internal data class ParsedBarcodeValue(
  * `SMSTO:`, `WIFI:`, `geo:`, `BEGIN:VCARD`, `MECARD:`, `BEGIN:VEVENT`), AAMVA PDF417 driver's licenses, and EAN/UPC
  * product codes (ISBNs for `978`/`979` EAN-13s), else plain text. Like ML Kit, the display value is the main
  * fields of structured values (the URL of a bookmark, the SSID and password of a WiFi config, the number of a phone,
- * the number and message of an SMS, the address of an email, the name of a contact, the summary of an event), and
- * the raw value otherwise (including locations).
+ * the number and message of an SMS, the address of an email, the name of a contact, the summary of an event, the
+ * type and name of a driver's license), and the raw value otherwise (including locations).
  */
 internal object BarcodeValueParser {
     /** The prefixes of an ISBN (Bookland) EAN-13. */
@@ -33,9 +33,6 @@ internal object BarcodeValueParser {
     /** The schemes of an SMS (or MMS) message. */
     private val smsSchemes = listOf("smsto:", "sms:", "mmsto:", "mms:")
 
-    /** The number of characters of a driver's license's raw value searched for the AAMVA header. */
-    private const val AAMVA_HEADER_LENGTH = 40
-
     /**
      * Parses the given [rawValue] of a barcode of the given [format].
      */
@@ -43,9 +40,9 @@ internal object BarcodeValueParser {
         if (rawValue == null) return ParsedBarcodeValue(BarcodeValueType.UNKNOWN, null)
         return when {
             format.isProductFormat -> parseProduct(rawValue, format)
-            format == BarcodeFormat.PDF_417 && isDriverLicense(rawValue) ->
-                ParsedBarcodeValue(BarcodeValueType.DRIVER_LICENSE, rawValue)
-            else -> parseContent(rawValue) ?: ParsedBarcodeValue(BarcodeValueType.TEXT, rawValue)
+            else -> (if (format == BarcodeFormat.PDF_417) parseDriverLicense(rawValue) else null)
+                ?: parseContent(rawValue)
+                ?: ParsedBarcodeValue(BarcodeValueType.TEXT, rawValue)
         }
     }
 
@@ -57,12 +54,6 @@ internal object BarcodeValueParser {
         val isIsbn = format == BarcodeFormat.EAN_13 && isbnPrefixes.any { rawValue.startsWith(it) }
         val type = if (isIsbn) BarcodeValueType.ISBN else BarcodeValueType.PRODUCT
         return ParsedBarcodeValue(type, rawValue)
-    }
-
-    /** Whether the [rawValue] is an AAMVA driver's license / ID card (`@`, then an `ANSI ` or `AAMVA` header). */
-    private fun isDriverLicense(rawValue: String): Boolean {
-        val header = rawValue.take(AAMVA_HEADER_LENGTH)
-        return rawValue.startsWith("@") && (header.contains("ANSI ") || header.contains("AAMVA"))
     }
 
     /** Parses a structured value from its prefix, or returns `null` if it is not structured (plain text). */

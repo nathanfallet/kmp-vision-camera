@@ -122,10 +122,22 @@ class BarcodeValueParserTest {
 
     @Test
     fun driverLicenses() {
-        val license = "@\n\u001e\rANSI 636014080102DL00410288ZC03290024DLDAQD1234562\nDCSDOE\nDACJOHN\n"
-        assertParsed(license, BarcodeValueType.DRIVER_LICENSE, license, BarcodeFormat.PDF_417)
-        val oldLicense = "@\n\u001e\rAAMVA6360000102DL00390187DLDAQ0123456789\n"
-        assertParsed(oldLicense, BarcodeValueType.DRIVER_LICENSE, oldLicense, BarcodeFormat.PDF_417)
+        // Like ML Kit: the type, last name (DCS) and first name (DAC, else DCT before a comma) of the DL/ID subfile
+        val license = "@\n\u001e\rANSI 636014080001DL00310034DLDAQD1234562\nDCSFALLET\nDACNATHAN\r"
+        assertParsed(license, BarcodeValueType.DRIVER_LICENSE, "DL FALLET NATHAN", BarcodeFormat.PDF_417)
+        val idCard = "@\n\u001e\rANSI 636014080001ID00310034IDDAQD1234562\nDCSFALLET\nDACNATHAN\r"
+        assertParsed(idCard, BarcodeValueType.DRIVER_LICENSE, "ID FALLET NATHAN", BarcodeFormat.PDF_417)
+        val firstNames = "@\n\u001e\rAAMVA636014080001DL00310041DLDAQD1234562\nDCSFALLET \nDCTNATHAN,MARIE\r"
+        assertParsed(firstNames, BarcodeValueType.DRIVER_LICENSE, "DL FALLET NATHAN", BarcodeFormat.PDF_417)
+        // The DL subfile may come after others (here a ZC subfile), and may have no names
+        val noNames = "@\n\u001e\rANSI 636014080002ZC00410005DL00460014ZCZCADLDAQD1234562\r"
+        assertParsed(noNames, BarcodeValueType.DRIVER_LICENSE, "DL  ", BarcodeFormat.PDF_417)
+        // A subfile past the end, a header without a jurisdiction version, or no "@" are plain text
+        val tooLong = license.replace("DL00310034", "DL00310035")
+        assertParsed(tooLong, BarcodeValueType.TEXT, tooLong, BarcodeFormat.PDF_417)
+        val oldHeader = "@\n\u001e\rANSI 6360140101DL00290034DLDAQD1234562\nDCSFALLET\nDACNATHAN\r"
+        assertParsed(oldHeader, BarcodeValueType.TEXT, oldHeader, BarcodeFormat.PDF_417)
+        assertParsed(license.drop(1), BarcodeValueType.TEXT, license.drop(1), BarcodeFormat.PDF_417)
         // Only PDF417 codes are driver's licenses
         assertParsed(license, BarcodeValueType.TEXT, license, BarcodeFormat.QR_CODE)
         assertParsed("@ hello", BarcodeValueType.TEXT, "@ hello", BarcodeFormat.PDF_417)
