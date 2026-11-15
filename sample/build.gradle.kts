@@ -29,6 +29,7 @@ kotlin {
             implementation(projects.compose)
             implementation(projects.barcodeCompose)
             implementation(projects.locationCompose)
+            implementation(projects.resizerCompose)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)

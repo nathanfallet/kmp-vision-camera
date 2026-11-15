@@ -63,7 +63,7 @@ internal fun rememberDepthStats(): Pair<CameraDepthFrameOutput, String?> {
 }
 
 /** Counts frames on the output's thread, and returns (and logs) a summary once per second. */
-private class FrameCounter {
+internal class FrameCounter {
     private var windowStart = TimeSource.Monotonic.markNow()
     private var count = 0
 

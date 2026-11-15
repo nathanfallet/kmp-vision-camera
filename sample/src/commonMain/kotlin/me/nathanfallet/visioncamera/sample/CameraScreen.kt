@@ -74,6 +74,9 @@ private enum class StreamMode {
 
     /** The depth output, measuring the depth frames' FPS. */
     DEPTH,
+
+    /** The frame output, resizing every frame on the GPU like an ML model's input. */
+    RESIZE,
 }
 
 /**
@@ -114,6 +117,7 @@ fun CameraScreen() {
     val videoOutput = rememberVideoOutput()
     val (frameOutput, frameStats) = rememberFrameStats()
     val (depthOutput, depthStats) = rememberDepthStats()
+    val (resizerOutput, resizerStats) = rememberResizerStats()
     val (objectOutput, scannedCodes) = rememberObjectCodeScanner()
     val barcodeScan = rememberBarcodeScan()
     val previewRef = rememberPreviewViewRef()
@@ -128,6 +132,7 @@ fun CameraScreen() {
                 StreamMode.FRAMES -> frameOutput
                 StreamMode.CODES -> barcodeScan.output
                 StreamMode.DEPTH -> depthOutput
+                StreamMode.RESIZE -> resizerOutput
             },
             objectOutput,
         ),
@@ -179,6 +184,7 @@ fun CameraScreen() {
                 streamStats = when (streamMode) {
                     StreamMode.FRAMES -> frameStats?.let { "Frames: $it" }
                     StreamMode.DEPTH -> depthStats?.let { "Depth: $it" }
+                    StreamMode.RESIZE -> resizerStats
                     else -> null
                 },
                 scannedCodes = scannedCodes.mapNotNull { it.value },
@@ -246,7 +252,12 @@ fun CameraScreen() {
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Frames" to StreamMode.FRAMES, "Codes" to StreamMode.CODES, "Depth" to StreamMode.DEPTH)
+                    listOf(
+                        "Frames" to StreamMode.FRAMES,
+                        "Codes" to StreamMode.CODES,
+                        "Depth" to StreamMode.DEPTH,
+                        "Resize" to StreamMode.RESIZE,
+                    )
                         .forEach { (label, mode) ->
                             ModeButton(label, mode, current = streamMode, enabled = recorder == null) { streamMode = it }
                         }
