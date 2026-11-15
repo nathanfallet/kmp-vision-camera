@@ -33,7 +33,7 @@ internal class AndroidPhoto(
     // Only CPU-accessible planes can be copied into a ByteArray.
     override val hasPixelBuffer: Boolean get() = image.planes.isNotEmpty()
 
-    // TODO(phase 2): depth and calibration data.
+    // V5 does not support depth and calibration data for Photos on Android yet.
     override val depth: Depth? = null
 
     override val calibrationData: CameraCalibrationData? = null

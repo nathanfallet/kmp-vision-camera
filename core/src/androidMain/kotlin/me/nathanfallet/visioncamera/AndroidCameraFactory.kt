@@ -65,11 +65,10 @@ internal class AndroidCameraFactory : CameraFactory {
     override fun createTapToFocusGestureController(): TapToFocusGestureController =
         AndroidTapToFocusGestureController()
 
-    override fun createFrameOutput(options: FrameOutputOptions): CameraFrameOutput =
-        notImplementedYet("CameraFrameOutput")
+    override fun createFrameOutput(options: FrameOutputOptions): CameraFrameOutput = AndroidFrameOutput(options)
 
     override fun createDepthFrameOutput(options: DepthFrameOutputOptions): CameraDepthFrameOutput =
-        notImplementedYet("CameraDepthFrameOutput")
+        AndroidDepthFrameOutput(options)
 
     override fun createObjectOutput(options: ObjectOutputOptions): CameraObjectOutput =
         throw VisionCameraException("CameraObjectOutput is not available on Android!")
@@ -78,9 +77,12 @@ internal class AndroidCameraFactory : CameraFactory {
         throw VisionCameraException("OutputSynchronizer is not available on Android!")
 
     override fun createOrientationManager(orientationSource: OrientationSource): OrientationManager =
-        notImplementedYet("OrientationManager")
+        when (orientationSource) {
+            OrientationSource.INTERFACE -> AndroidInterfaceOrientationManager()
+            OrientationSource.DEVICE -> AndroidDeviceOrientationManager()
+        }
 
-    override fun createFrameRenderer(): FrameRenderer = notImplementedYet("FrameRenderer")
+    override fun createFrameRenderer(): FrameRenderer = AndroidFrameRenderer()
 
     override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint {
         val meteringPoint = if (size != null) {

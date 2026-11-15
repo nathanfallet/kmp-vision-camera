@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 internal class AndroidPhotoOutput(
     private val options: PhotoOutputOptions,
 ) : CameraPhotoOutput, NativeCameraOutput {
-    // TODO(phase 2): depth and calibration data delivery.
+    // V5 does not support depth and calibration data delivery for Photos on Android yet.
     override val supportsDepthDataDelivery: Boolean = false
 
     override val supportsCameraCalibrationDataDelivery: Boolean = false

@@ -40,6 +40,19 @@ internal fun cameraOrientationFromDegrees(degrees: Int): CameraOrientation {
     }
 }
 
+/**
+ * Converts a `Surface.ROTATION_*` value to a [CameraOrientation].
+ *
+ * @throws VisionCameraException If [surfaceRotation] is not a valid `Surface.ROTATION_*` value.
+ */
+internal fun cameraOrientationFromSurfaceRotation(surfaceRotation: Int): CameraOrientation = when (surfaceRotation) {
+    Surface.ROTATION_0 -> CameraOrientation.UP
+    Surface.ROTATION_180 -> CameraOrientation.DOWN
+    Surface.ROTATION_90 -> CameraOrientation.RIGHT
+    Surface.ROTATION_270 -> CameraOrientation.LEFT
+    else -> throw VisionCameraException("Invalid Surface Rotation value: $surfaceRotation")
+}
+
 /** The logical counter-orientation of this [CameraOrientation], aka flipping it. */
 internal fun CameraOrientation.counterRotated(): CameraOrientation = when (this) {
     CameraOrientation.UP -> CameraOrientation.UP
