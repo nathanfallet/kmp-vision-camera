@@ -116,4 +116,50 @@ internal class IosCameraController(
     }
 
     override fun toString(): String = "CameraController(device: $device)"
+
+    // Phase 1 features below are not implemented on this platform yet.
+
+    override suspend fun focusTo(point: MeteringPoint, options: FocusOptions) = notImplementedYet("focusTo")
+
+    override suspend fun resetFocus() = notImplementedYet("resetFocus")
+
+    override fun addSubjectAreaChangedListener(onSubjectAreaChanged: () -> Unit): ListenerSubscription =
+        ListenerSubscription { }
+
+    override suspend fun startZoomAnimation(zoom: Double, rate: Double) = notImplementedYet("startZoomAnimation")
+
+    override suspend fun cancelZoomAnimation() = notImplementedYet("cancelZoomAnimation")
+
+    override suspend fun enableTorchWithStrength(strength: Double) = notImplementedYet("enableTorchWithStrength")
+
+    override val focusMode: FocusMode get() = FocusMode.CONTINUOUS_AUTO_FOCUS
+    override val lensPosition: Double get() = 0.0
+
+    override suspend fun setFocusLocked(lensPosition: Double) = notImplementedYet("setFocusLocked")
+
+    override suspend fun lockCurrentFocus() = notImplementedYet("lockCurrentFocus")
+
+    override val exposureMode: ExposureMode get() = ExposureMode.CONTINUOUS_AUTO_EXPOSURE
+    override val minExposureDuration: Double get() = 0.0
+    override val maxExposureDuration: Double get() = 0.0
+    override val minISO: Double get() = 0.0
+    override val maxISO: Double get() = 0.0
+    override val exposureDuration: Double get() = 0.0
+    override val iso: Double get() = 0.0
+
+    override suspend fun setExposureLocked(duration: Double, iso: Double) = notImplementedYet("setExposureLocked")
+
+    override suspend fun lockCurrentExposure() = notImplementedYet("lockCurrentExposure")
+
+    override val whiteBalanceMode: WhiteBalanceMode get() = WhiteBalanceMode.CONTINUOUS_AUTO_WHITE_BALANCE
+    override val whiteBalanceGains: WhiteBalanceGains get() = WhiteBalanceGains(0.0, 0.0, 0.0)
+
+    override fun convertWhiteBalanceTemperatureAndTintValues(
+        whiteBalanceTemperatureAndTint: WhiteBalanceTemperatureAndTint,
+    ): WhiteBalanceGains = notImplementedYet("convertWhiteBalanceTemperatureAndTintValues")
+
+    override suspend fun setWhiteBalanceLocked(whiteBalanceGains: WhiteBalanceGains) =
+        notImplementedYet("setWhiteBalanceLocked")
+
+    override suspend fun lockCurrentWhiteBalance() = notImplementedYet("lockCurrentWhiteBalance")
 }

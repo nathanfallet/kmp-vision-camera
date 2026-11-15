@@ -69,4 +69,35 @@ interface CameraFactory {
      * Create a new [CameraPreviewOutput].
      */
     fun createPreviewOutput(): CameraPreviewOutput
+
+    /**
+     * Create a new [CameraPhotoOutput] with the given [options].
+     */
+    fun createPhotoOutput(options: PhotoOutputOptions = PhotoOutputOptions()): CameraPhotoOutput
+
+    /**
+     * Create a new [CameraVideoOutput] with the given [options].
+     */
+    fun createVideoOutput(options: VideoOutputOptions = VideoOutputOptions()): CameraVideoOutput
+
+    /**
+     * Create a new [ZoomGestureController], to attach to a `PreviewView`.
+     */
+    fun createZoomGestureController(): ZoomGestureController
+
+    /**
+     * Create a new [TapToFocusGestureController], to attach to a `PreviewView`.
+     */
+    fun createTapToFocusGestureController(): TapToFocusGestureController
+
+    /**
+     * Create a [MeteringPoint] from normalized coordinates, from `0.0` to `1.0`. You are responsible for handling
+     * orientation, cropping and scaling; to create a point from a tap on a `PreviewView`, use its
+     * `createMeteringPoint` instead.
+     *
+     * @param x The X coordinate, from `0.0` to `1.0`.
+     * @param y The Y coordinate, from `0.0` to `1.0`.
+     * @param size The size of the point, or `null` for the platform default.
+     */
+    fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double? = null): MeteringPoint
 }

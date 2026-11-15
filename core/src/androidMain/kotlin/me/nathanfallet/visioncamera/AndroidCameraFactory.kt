@@ -53,4 +53,20 @@ internal class AndroidCameraFactory : CameraFactory {
     override suspend fun createDeviceFactory(): CameraDeviceFactory = AndroidCameraDeviceFactory(cameraProvider())
 
     override fun createPreviewOutput(): CameraPreviewOutput = AndroidPreviewOutput()
+
+    // Phase 1 features below are not implemented on this platform yet.
+
+    override fun createPhotoOutput(options: PhotoOutputOptions): CameraPhotoOutput =
+        notImplementedYet("createPhotoOutput")
+
+    override fun createVideoOutput(options: VideoOutputOptions): CameraVideoOutput =
+        notImplementedYet("createVideoOutput")
+
+    override fun createZoomGestureController(): ZoomGestureController = notImplementedYet("createZoomGestureController")
+
+    override fun createTapToFocusGestureController(): TapToFocusGestureController =
+        notImplementedYet("createTapToFocusGestureController")
+
+    override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint =
+        notImplementedYet("createNormalizedMeteringPoint")
 }
