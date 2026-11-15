@@ -66,6 +66,10 @@ kotlin {
         commonMain.dependencies {
             api(projects.core)
         }
+        androidMain.dependencies {
+            implementation(libs.mlkit.barcode.scanning)
+            implementation(libs.kotlinx.coroutines.play.services)
+        }
     }
 }
 
