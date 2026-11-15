@@ -66,7 +66,7 @@ internal class ActiveCameraSessionSingle(
                 // RECOVERABLE errors are treated as interruptions, as CameraX automatically retries.
                 when (error.type) {
                     CameraState.ErrorType.CRITICAL ->
-                        listener.onError(VisionCameraException("Camera error ${error.code}", error.cause))
+                        listener.onError(VisionCameraException(error.reason, error.cause))
                     CameraState.ErrorType.RECOVERABLE -> listener.onInterruptionStarted()
                 }
             } else if (currentError?.type == CameraState.ErrorType.RECOVERABLE) {
