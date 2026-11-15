@@ -158,6 +158,14 @@ class BarcodeValueParserTest {
     }
 
     @Test
+    fun codabar() {
+        // Like ML Kit, the display value has no start and stop characters
+        assertParsed("A40156B", BarcodeValueType.TEXT, "40156", BarcodeFormat.CODABAR)
+        assertParsed("t123-45*", BarcodeValueType.TEXT, "123-45", BarcodeFormat.CODABAR)
+        assertParsed("40156", BarcodeValueType.TEXT, "40156", BarcodeFormat.CODABAR)
+    }
+
+    @Test
     fun percentDecoding() {
         assertEquals("a b", percentDecode("a%20b"))
         assertEquals("é", percentDecode("%C3%A9"))

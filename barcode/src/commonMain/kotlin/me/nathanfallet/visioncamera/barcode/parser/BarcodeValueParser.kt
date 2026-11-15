@@ -30,6 +30,9 @@ internal object BarcodeValueParser {
     /** The prefixes of an ISBN (Bookland) EAN-13. */
     private val isbnPrefixes = listOf("978", "979")
 
+    /** The start and stop characters of a Codabar code (`A`-`D`, or `T`, `N`, `*`, `E`). */
+    private const val CODABAR_START_STOP = "ABCDTN*E"
+
     /** The schemes of an SMS (or MMS) message. */
     private val smsSchemes = listOf("smsto:", "sms:", "mmsto:", "mms:")
 
@@ -40,6 +43,7 @@ internal object BarcodeValueParser {
         if (rawValue == null) return ParsedBarcodeValue(BarcodeValueType.UNKNOWN, null)
         return when {
             format.isProductFormat -> parseProduct(rawValue, format)
+            format == BarcodeFormat.CODABAR -> ParsedBarcodeValue(BarcodeValueType.TEXT, codabarData(rawValue))
             else -> (if (format == BarcodeFormat.PDF_417) parseDriverLicense(rawValue) else null)
                 ?: parseContent(rawValue)
                 ?: ParsedBarcodeValue(BarcodeValueType.TEXT, rawValue)
@@ -49,6 +53,17 @@ internal object BarcodeValueParser {
     private val BarcodeFormat.isProductFormat: Boolean
         get() = this == BarcodeFormat.EAN_13 || this == BarcodeFormat.EAN_8 ||
             this == BarcodeFormat.UPC_A || this == BarcodeFormat.UPC_E
+
+    /**
+     * The data of a Codabar [rawValue], without its start and stop characters (`A40156B` is displayed as `40156`, like
+     * ML Kit), or the [rawValue] if it has none.
+     */
+    private fun codabarData(rawValue: String): String {
+        val hasStartStop = rawValue.length >= 2 &&
+            rawValue.first().uppercaseChar() in CODABAR_START_STOP &&
+            rawValue.last().uppercaseChar() in CODABAR_START_STOP
+        return if (hasStartStop) rawValue.substring(1, rawValue.length - 1) else rawValue
+    }
 
     private fun parseProduct(rawValue: String, format: BarcodeFormat): ParsedBarcodeValue {
         val isIsbn = format == BarcodeFormat.EAN_13 && isbnPrefixes.any { rawValue.startsWith(it) }
