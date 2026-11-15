@@ -37,6 +37,8 @@ Kotlin API, from a simple preview to advanced session configuration, photo, vide
   Android, CoreLocation on iOS) and location tags in photos and videos.
 * **Frame resizer** – the `resizer` module resizes and converts frames to RGB tensors for ML models on the GPU, with
   Metal on iOS and Vulkan on Android.
+* **Skia** – the `skia` and `skia-compose` modules port VisionCamera's `<SkiaCamera />`: render frames with Skia
+  (Skiko) on the GPU, with SkSL shaders and custom drawing. Frames reach Skia without a CPU copy.
 * **Coroutines first** – every asynchronous operation is a `suspend` function.
 * **Compose optional** – the engine has no Compose dependency and works with Android Views, UIKit or SwiftUI; the
   `compose` module adds `Camera`, `NativePreviewView` and `remember*` helpers.
@@ -59,7 +61,7 @@ Early development. What works today:
 - [x] Barcode scanner (`barcode`, `barcode-compose`): frames, images, camera output and `CodeScanner`
 - [x] Location (`location`, `location-compose`): `LocationManager`, `rememberLocation`, location tags in photos and videos
 - [x] Resizer (`resizer`, `resizer-compose`): GPU resize and RGB conversion of frames for ML models (Metal, Vulkan)
-- [ ] Skia
+- [x] Skia (`skia`, `skia-compose`): `SkiaCamera` and Skia frame processors with Skiko (SkSL shaders, custom drawing)
 
 ## Modules
 
@@ -73,6 +75,8 @@ Early development. What works today:
 | `location-compose` | Compose integration of `location`: `rememberLocation`, `rememberLocationManager` |
 | `resizer` | GPU frame resizer and RGB converter for ML models, with Metal and Vulkan |
 | `resizer-compose` | Compose integration of `resizer`: `rememberResizer` |
+| `skia` | Renders frames as Skia (Skiko) GPU textures: `renderToTexture` |
+| `skia-compose` | Compose integration of `skia`: `SkiaCamera`, `rememberSkiaCameraRef` |
 
 ## Installation
 
@@ -93,8 +97,24 @@ dependencies {
     // Optional, for resizing frames on the GPU (and its Compose helper):
     implementation("me.nathanfallet.visioncamera:resizer:0.1.0")
     implementation("me.nathanfallet.visioncamera:resizer-compose:0.1.0")
+    // Optional, for rendering frames with Skia (and the SkiaCamera Compose view):
+    implementation("me.nathanfallet.visioncamera:skia:0.1.0")
+    implementation("me.nathanfallet.visioncamera:skia-compose:0.1.0")
 }
 ```
+
+The `skia` modules use Skiko, whose Android artifacts are only published on JetBrains' repository. Add it to the
+`dependencyResolutionManagement` of your `settings.gradle.kts`:
+
+```kotlin
+maven("https://packages.jetbrains.team/maven/p/cmp/dev") {
+    mavenContent {
+        includeModuleByRegex("org\\.jetbrains\\.skiko", "skiko-android.*")
+    }
+}
+```
+
+Skia supports `arm64-v8a` and `x86_64` on Android 9 (API 28) or higher.
 
 On Android, declare the permissions you need in your `AndroidManifest.xml`:
 
@@ -210,6 +230,37 @@ val frameOutput = rememberFrameOutput(FrameOutputOptions(pixelFormat = TargetVid
         }
     }
 }
+```
+
+### Skia
+
+```kotlin
+val paint = remember { Paint() }
+val effect = remember {
+    RuntimeEffect.makeForShader(
+        """
+        uniform shader src;
+        half4 main(float2 xy) {
+            half4 color = src.eval(xy);
+            return half4(1.0 - color.rgb, color.a);
+        }
+        """.trimIndent(),
+    )
+}
+SkiaCamera(
+    device = TargetCameraPosition.BACK,
+    isActive = true,
+    onFrame = { frame, render ->
+        render { (frameTexture, canvas) ->
+            val shader = frameTexture.makeShader(FilterTileMode.CLAMP, FilterTileMode.CLAMP, SamplingMode.LINEAR)
+            paint.shader = effect.makeShader(null, arrayOf(shader), null)
+            // Skia ignores the shader of a paint given to drawImage: draw a rect covering the frame
+            canvas.drawRect(Rect.makeWH(frameTexture.width.toFloat(), frameTexture.height.toFloat()), paint)
+        }
+        frame.dispose()
+    },
+    modifier = Modifier.fillMaxSize(),
+)
 ```
 
 ### Imperative API
