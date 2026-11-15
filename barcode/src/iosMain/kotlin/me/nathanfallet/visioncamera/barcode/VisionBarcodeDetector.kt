@@ -1,6 +1,7 @@
 package me.nathanfallet.visioncamera.barcode
 
 import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ObjCObjectVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.autoreleasepool
@@ -30,17 +31,20 @@ import platform.CoreVideo.CVPixelBufferGetWidth
 import platform.CoreVideo.CVPixelBufferRef
 import platform.Foundation.NSData
 import platform.Foundation.NSError
+import platform.Foundation.NSLock
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageOrientation
 import platform.Vision.VNBarcodeObservation
 import platform.Vision.VNDetectBarcodesRequest
 import platform.Vision.VNImageRequestHandler
+import platform.Vision.VNSequenceRequestHandler
 
 /**
  * Detects barcodes with Apple Vision (`VNDetectBarcodesRequest`), and reports them like ML Kit does in V5.
  *
  * This replaces V5's ML Kit `BarcodeScanner` on iOS. It is shared by the [BarcodeScanner] and the Barcode Scanner
- * output, and is thread-safe: each detection uses its own Vision request.
+ * output, and is thread-safe: camera frames are scanned one at a time, and each still image uses its own Vision
+ * request.
  */
 @OptIn(BetaInteropApi::class)
 internal class VisionBarcodeDetector(targetFormats: List<TargetBarcodeFormat>) {
@@ -50,24 +54,40 @@ internal class VisionBarcodeDetector(targetFormats: List<TargetBarcodeFormat>) {
     /** The Vision symbologies detecting the [requestedFormats]. */
     private val symbologies = requestedFormats.flatMap { it.toVisionSymbologies() }.distinct()
 
+    // Camera frames are scanned with one long-lived handler and request, guarded by frameLock. A Vision handler
+    // created per frame from Kotlin retains the frame's pixel buffer until the next Kotlin/Native GC, which drains
+    // the camera's buffer pool and stalls the capture (the preview freezes on devices).
+    private val frameLock = NSLock()
+    private val frameHandler = VNSequenceRequestHandler()
+    private val frameRequest = VNDetectBarcodesRequest().also { it.symbologies = symbologies }
+
     /**
      * Synchronously detects barcodes in the given [pixelBuffer], whose content has the given [orientation]. The
      * coordinates are relative to the [pixelBuffer] (the `Frame`'s coordinate system), like ML Kit's.
      *
      * @throws VisionCameraException If Vision failed to detect barcodes.
      */
-    fun detect(pixelBuffer: CVPixelBufferRef, orientation: UIImageOrientation): List<Barcode> = autoreleasepool {
+    fun detect(pixelBuffer: CVPixelBufferRef, orientation: UIImageOrientation): List<Barcode> {
         val space = VisionCoordinateSpace(
             orientation = orientation,
             width = CVPixelBufferGetWidth(pixelBuffer).toDouble(),
             height = CVPixelBufferGetHeight(pixelBuffer).toDouble(),
         )
-        val handler = VNImageRequestHandler(
-            cVPixelBuffer = pixelBuffer,
-            orientation = orientation.toCGImagePropertyOrientation(),
-            options = emptyMap<Any?, Any?>(),
-        )
-        perform(handler, space)
+        frameLock.lock()
+        try {
+            return autoreleasepool {
+                perform(frameRequest, space) { error ->
+                    frameHandler.performRequests(
+                        requests = listOf(frameRequest),
+                        onCVPixelBuffer = pixelBuffer,
+                        orientation = orientation.toCGImagePropertyOrientation(),
+                        error = error,
+                    )
+                }
+            }
+        } finally {
+            frameLock.unlock()
+        }
     }
 
     /**
@@ -94,19 +114,23 @@ internal class VisionBarcodeDetector(targetFormats: List<TargetBarcodeFormat>) {
                 orientation = image.imageOrientation.toCGImagePropertyOrientation(),
                 options = emptyMap<Any?, Any?>(),
             )
-            perform(handler, space)
+            val request = VNDetectBarcodesRequest().also { it.symbologies = symbologies }
+            perform(request, space) { error -> handler.performRequests(listOf(request), error = error) }
         } finally {
             CGImageRelease(renderedImage)
         }
     }
 
-    private fun perform(handler: VNImageRequestHandler, space: VisionCoordinateSpace): List<Barcode> {
+    /** Runs the [request] with [run], and returns its barcodes, in the [space]'s coordinates. */
+    private fun perform(
+        request: VNDetectBarcodesRequest,
+        space: VisionCoordinateSpace,
+        run: (error: CPointer<ObjCObjectVar<NSError?>>) -> Boolean,
+    ): List<Barcode> {
         if (symbologies.isEmpty()) return emptyList()
-        val request = VNDetectBarcodesRequest()
-        request.symbologies = symbologies
         memScoped {
             val error = alloc<ObjCObjectVar<NSError?>>()
-            if (!handler.performRequests(listOf(request), error = error.ptr)) {
+            if (!run(error.ptr)) {
                 val description = error.value?.localizedDescription ?: "Unknown error"
                 throw VisionCameraException("Failed to scan barcodes: $description")
             }
