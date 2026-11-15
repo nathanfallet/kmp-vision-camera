@@ -181,7 +181,7 @@ SkiaCamera(
 > Skia ignores the shader of a `Paint` passed to `drawImage`. To apply a shader that samples the frame, draw a rect
 > that covers the `frameTexture` with the shader paint, as above.
 
-The sample app has a [Skia screen](https://github.com/NathanFallet/kmp-vision-camera/blob/main/sample/src/commonMain/kotlin/me/nathanfallet/visioncamera/sample/SkiaScreen.kt)
+The sample app has a [Skia screen](https://github.com/nathanfallet/kmp-vision-camera/blob/main/sample/src/commonMain/kotlin/me/nathanfallet/visioncamera/sample/SkiaScreen.kt)
 with grayscale, invert and pixelate shaders.
 
 ## Drawing overlays
