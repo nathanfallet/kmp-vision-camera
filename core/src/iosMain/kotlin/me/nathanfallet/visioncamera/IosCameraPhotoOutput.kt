@@ -13,6 +13,11 @@ import platform.Foundation.NSValue
  * The iOS [CameraPhotoOutput], backed by an [AVCapturePhotoOutput] (port of V5's `HybridCameraPhotoOutput.swift`).
  */
 internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : CameraPhotoOutput, NativeCameraOutput {
+    // TODO(phase 2): depth and calibration data delivery.
+    override val supportsDepthDataDelivery: Boolean = false
+
+    override val supportsCameraCalibrationDataDelivery: Boolean = false
+
     override val mediaType: MediaType = MediaType.VIDEO
     override val requiresAudioInput: Boolean = false
     override val requiresDepthFormat: Boolean = false

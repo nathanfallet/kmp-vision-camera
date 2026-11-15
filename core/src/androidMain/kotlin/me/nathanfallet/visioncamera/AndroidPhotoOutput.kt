@@ -22,6 +22,11 @@ import kotlin.math.roundToInt
 internal class AndroidPhotoOutput(
     private val options: PhotoOutputOptions,
 ) : CameraPhotoOutput, NativeCameraOutput {
+    // TODO(phase 2): depth and calibration data delivery.
+    override val supportsDepthDataDelivery: Boolean = false
+
+    override val supportsCameraCalibrationDataDelivery: Boolean = false
+
     private var imageCapture: ImageCapture? = null
     private val shutterSound = MediaActionSound()
 

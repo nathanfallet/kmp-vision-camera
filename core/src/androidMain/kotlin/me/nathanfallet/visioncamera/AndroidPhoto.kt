@@ -33,6 +33,11 @@ internal class AndroidPhoto(
     // Only CPU-accessible planes can be copied into a ByteArray.
     override val hasPixelBuffer: Boolean get() = image.planes.isNotEmpty()
 
+    // TODO(phase 2): depth and calibration data.
+    override val depth: Depth? = null
+
+    override val calibrationData: CameraCalibrationData? = null
+
     override fun getPixelBuffer(): ByteArray {
         val planes = image.planes
         if (planes.isEmpty()) throw VisionCameraException("Photo does not contain any readable Pixel Data!")

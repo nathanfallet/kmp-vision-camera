@@ -53,6 +53,11 @@ internal class IosPhoto(
 
     override val hasPixelBuffer: Boolean get() = capturedPhoto?.pixelBuffer != null
 
+    // TODO(phase 2): depth and calibration data.
+    override val depth: Depth? = null
+
+    override val calibrationData: CameraCalibrationData? = null
+
     override fun getPixelBuffer(): ByteArray {
         val pixelBuffer = photo.pixelBuffer ?: throw VisionCameraException(
             "This Photo does not contain a pixel buffer! " +

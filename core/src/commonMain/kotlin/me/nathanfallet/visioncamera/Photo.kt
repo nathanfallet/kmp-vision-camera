@@ -43,6 +43,18 @@ interface Photo : AutoCloseable {
     fun getPixelBuffer(): ByteArray
 
     /**
+     * The [Depth] data captured with this photo, if [CapturePhotoSettings.enableDepthData] was enabled and the device
+     * supports it. It is disposed together with this photo.
+     */
+    val depth: Depth?
+
+    /**
+     * The [CameraCalibrationData] captured with this photo, if
+     * [CapturePhotoSettings.enableCameraCalibrationDataDelivery] was enabled and the device supports it. iOS only.
+     */
+    val calibrationData: CameraCalibrationData?
+
+    /**
      * Saves this photo in its [containerFormat] to the given [path], a full filesystem path including the file name
      * and extension. The parent directories must exist, and the file must not.
      */

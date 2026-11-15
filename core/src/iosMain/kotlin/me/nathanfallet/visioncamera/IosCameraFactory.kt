@@ -98,6 +98,23 @@ internal class IosCameraFactory : CameraFactory {
 
     override fun createTapToFocusGestureController(): TapToFocusGestureController = IosTapToFocusGestureController()
 
+    override fun createFrameOutput(options: FrameOutputOptions): CameraFrameOutput =
+        notImplementedYet("CameraFrameOutput")
+
+    override fun createDepthFrameOutput(options: DepthFrameOutputOptions): CameraDepthFrameOutput =
+        notImplementedYet("CameraDepthFrameOutput")
+
+    override fun createObjectOutput(options: ObjectOutputOptions): CameraObjectOutput =
+        notImplementedYet("CameraObjectOutput")
+
+    override fun createOutputSynchronizer(outputs: List<CameraOutput>): CameraOutputSynchronizer =
+        notImplementedYet("CameraOutputSynchronizer")
+
+    override fun createOrientationManager(orientationSource: OrientationSource): OrientationManager =
+        notImplementedYet("OrientationManager")
+
+    override fun createFrameRenderer(): FrameRenderer = notImplementedYet("FrameRenderer")
+
     override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint =
         IosMeteringPoint.normalized(x = x, y = y, size = size ?: IosMeteringPoint.DEFAULT_SIZE)
 }

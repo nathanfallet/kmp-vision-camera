@@ -81,6 +81,30 @@ interface CameraFactory {
     fun createVideoOutput(options: VideoOutputOptions = VideoOutputOptions()): CameraVideoOutput
 
     /**
+     * Create a new [CameraFrameOutput] with the given [options], to stream [Frame]s (Frame Processing).
+     */
+    fun createFrameOutput(options: FrameOutputOptions = FrameOutputOptions()): CameraFrameOutput
+
+    /**
+     * Create a new [CameraDepthFrameOutput] with the given [options], to stream [Depth] frames.
+     */
+    fun createDepthFrameOutput(options: DepthFrameOutputOptions = DepthFrameOutputOptions()): CameraDepthFrameOutput
+
+    /**
+     * Create a new [CameraObjectOutput] with the given [options], to scan codes, faces and bodies.
+     *
+     * @throws VisionCameraException On Android, where it is not available.
+     */
+    fun createObjectOutput(options: ObjectOutputOptions): CameraObjectOutput
+
+    /**
+     * Create a new [CameraOutputSynchronizer] synchronizing the given [outputs].
+     *
+     * @throws VisionCameraException On Android, where it is not available.
+     */
+    fun createOutputSynchronizer(outputs: List<CameraOutput>): CameraOutputSynchronizer
+
+    /**
      * Create a new [ZoomGestureController], to attach to a `PreviewView`.
      */
     fun createZoomGestureController(): ZoomGestureController
@@ -89,6 +113,16 @@ interface CameraFactory {
      * Create a new [TapToFocusGestureController], to attach to a `PreviewView`.
      */
     fun createTapToFocusGestureController(): TapToFocusGestureController
+
+    /**
+     * Create a new [OrientationManager] tracking the given [orientationSource].
+     */
+    fun createOrientationManager(orientationSource: OrientationSource): OrientationManager
+
+    /**
+     * Create a new [FrameRenderer], to render [Frame]s into a `FrameRendererView`.
+     */
+    fun createFrameRenderer(): FrameRenderer
 
     /**
      * Create a [MeteringPoint] from normalized coordinates, from `0.0` to `1.0`. You are responsible for handling

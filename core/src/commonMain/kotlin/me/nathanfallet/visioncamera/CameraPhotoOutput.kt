@@ -60,8 +60,18 @@ data class CapturePhotoSettings(
      * regional sound-suppression settings.
      */
     val enableShutterSound: Boolean = true,
+    /**
+     * Whether to deliver depth data with the photo, readable with [Photo.depth]. Requires
+     * [CameraPhotoOutput.supportsDepthDataDelivery].
+     */
+    val enableDepthData: Boolean = false,
     /** Whether red-eye reduction is applied on flash captures. */
     val enableRedEyeReduction: Boolean = true,
+    /**
+     * Whether to deliver camera calibration data with the photo, readable with [Photo.calibrationData]. Requires
+     * [CameraPhotoOutput.supportsCameraCalibrationDataDelivery].
+     */
+    val enableCameraCalibrationDataDelivery: Boolean = false,
     /**
      * Whether the pipeline corrects lens distortion. Captured photos may then have a narrower field of view than the
      * preview.
@@ -110,6 +120,15 @@ data class PhotoFile(
  * ```
  */
 interface CameraPhotoOutput : CameraOutput {
+    /** Whether this output can deliver depth data with photos ([CapturePhotoSettings.enableDepthData]). */
+    val supportsDepthDataDelivery: Boolean
+
+    /**
+     * Whether this output can deliver camera calibration data with photos
+     * ([CapturePhotoSettings.enableCameraCalibrationDataDelivery]).
+     */
+    val supportsCameraCalibrationDataDelivery: Boolean
+
     /**
      * Captures a [Photo] in memory with the given [settings].
      *

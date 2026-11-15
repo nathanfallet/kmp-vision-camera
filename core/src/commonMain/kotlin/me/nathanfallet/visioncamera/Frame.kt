@@ -15,7 +15,7 @@ package me.nathanfallet.visioncamera
  * }
  * ```
  */
-interface Frame : AutoCloseable {
+interface Frame : FrameOrDepth, AutoCloseable {
     /** The presentation timestamp of this Frame, in nanoseconds. */
     val timestamp: Long
 
@@ -50,12 +50,36 @@ interface Frame : AutoCloseable {
     val hasNativeBuffer: Boolean
 
     /**
+     * Gets the [FramePlane]s of this Frame, if it is planar ([isPlanar]), e.g. one full resolution **Y** plane and one
+     * half resolution **UV** plane in YUV. Returns an empty list for non-planar Frames.
+     *
+     * @throws VisionCameraException If this Frame is not valid anymore, or cannot be accessed on the CPU
+     * ([hasPixelBuffer]).
+     */
+    fun getPlanes(): List<FramePlane>
+
+    /**
+     * Gets this Frame's pixel data, for non-planar Frames (e.g. RGB). For planar Frames, use [getPlanes] instead, as
+     * the content of this buffer is then platform specific.
+     *
+     * Unlike VisionCamera's `ArrayBuffer`, the returned [ByteArray] is a copy of the pixel data: prefer
+     * [getNativeBuffer] for zero-copy GPU or ML processing.
+     *
+     * @throws VisionCameraException If this Frame is not valid anymore, or cannot be accessed on the CPU
+     * ([hasPixelBuffer]).
+     */
+    fun getPixelBuffer(): ByteArray
+
+    /**
      * Gets a [NativeBuffer] to this Frame's native platform buffer, for zero-copy GPU or ML processing.
      * The returned buffer must be [NativeBuffer.release]d before this Frame is disposed.
      */
     fun getNativeBuffer(): NativeBuffer
 
-    /** The camera intrinsic matrix (3x3, row-major) of this Frame, if available. */
+    /**
+     * The camera intrinsic matrix of this Frame (3x3, column-major, see [CameraCalibrationData.cameraIntrinsicMatrix]),
+     * or `null` if [FrameOutputOptions.enableCameraMatrixDelivery] is disabled. iOS only.
+     */
     val cameraIntrinsicMatrix: List<Double>?
 
     /** Converts a point in the Camera's normalized coordinate system to this Frame's coordinate system. */
