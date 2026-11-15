@@ -28,6 +28,11 @@ Kotlin API, from a simple preview to advanced session configuration, photo, vide
   capabilities exposed: physical lenses, formats, FPS ranges, HDR, zoom, torch, exposure…
 * **Constraints** – describe what you want (60 FPS, HDR, stabilization, resolution priority…), and the session
   negotiates the closest configuration the device supports.
+* **Frame processing** – a real-time `Frame` stream on a dedicated thread, with planes, CPU pixel buffers and
+  zero-copy native buffers (`CVPixelBufferRef` on iOS, `AHardwareBuffer*` on Android), plus depth frames, a frame
+  renderer and a frame converter.
+* **Barcode scanning** – the `barcode` module ports VisionCamera's barcode scanner, with the same API on both
+  platforms: ML Kit on Android, Apple Vision on iOS (nothing to add to your app).
 * **Coroutines first** – every asynchronous operation is a `suspend` function.
 * **Compose optional** – the engine has no Compose dependency and works with Android Views, UIKit or SwiftUI; the
   `compose` module adds `Camera`, `NativePreviewView` and `remember*` helpers.
@@ -43,10 +48,20 @@ Early development. What works today:
 - [x] Preview output and preview views (Android `View`, iOS `UIView`, Compose), tap-to-focus and pinch-to-zoom
 - [x] Photo output
 - [x] Video output
-- [x] Frame output (frame processing), frame renderer and frame converter
-- [x] Depth output and object output (iOS), output synchronizer (iOS)
-- [ ] Barcode scanner
-- [ ] Multi-cam, Skia, resizer…
+- [x] Photo preview image and preview snapshots
+- [x] Frame output (frame processing) with native buffers, frame renderer and frame converter
+- [x] Depth output, object output (iOS) and output synchronizer (iOS)
+- [x] Automatic output orientation (device or interface), subject area changes
+- [ ] Barcode scanner (`barcode`): Android done, iOS and Compose helpers in progress
+- [ ] Location, resizer, Skia
+
+## Modules
+
+| Module | Description |
+|---|---|
+| `core` | The camera engine: devices, sessions, controller, preview, photo, video, frame, depth and object outputs |
+| `compose` | Compose Multiplatform integration: `Camera`, `NativePreviewView`, `NativeFrameRendererView`, `remember*` |
+| `barcode` | Barcode scanning on frames, images or as a camera output (in progress) |
 
 ## Installation
 
@@ -57,6 +72,8 @@ dependencies {
     implementation("me.nathanfallet.visioncamera:core:0.1.0")
     // Optional, for Compose Multiplatform:
     implementation("me.nathanfallet.visioncamera:compose:0.1.0")
+    // Optional, for barcode scanning:
+    implementation("me.nathanfallet.visioncamera:barcode:0.1.0")
 }
 ```
 
@@ -106,6 +123,33 @@ val controller = rememberCamera(
 NativePreviewView(previewOutput, Modifier.fillMaxSize())
 ```
 
+### Frame processing
+
+```kotlin
+val frameOutput = rememberFrameOutput(FrameOutputOptions(pixelFormat = TargetVideoPixelFormat.YUV)) { frame ->
+    frame.use {
+        // Runs on the output's thread, for every frame
+        println("${it.width}x${it.height}, ${it.getPlanes().size} planes")
+    }
+}
+Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(frameOutput))
+```
+
+### Barcode scanning
+
+```kotlin
+val barcodeOutput = remember {
+    createBarcodeScannerOutput(
+        BarcodeScannerOutputOptions(
+            barcodeFormats = listOf(TargetBarcodeFormat.QR_CODE, TargetBarcodeFormat.EAN_13),
+            onBarcodeScanned = { barcodes -> barcodes.forEach { println(it.rawValue) } },
+            onError = { println(it) },
+        ),
+    )
+}
+Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(barcodeOutput))
+```
+
 ### Imperative API
 
 The engine has no Compose dependency, and can be used from any Kotlin code (Android Views, UIKit, SwiftUI…):
@@ -144,7 +188,8 @@ VisionCamera's, the [VisionCamera documentation](https://visioncamera.margelo.co
 ## Sample app
 
 The [sample](sample) module contains a demo app for Android ([sample-android](sample-android)) and iOS
-([sample-ios](sample-ios)).
+([sample-ios](sample-ios)): preview with tap-to-focus and pinch-to-zoom, photo, video recording, live frame
+statistics, and QR code scanning on iOS.
 
 ## Credits
 
