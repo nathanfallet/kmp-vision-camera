@@ -33,23 +33,19 @@ internal fun cameraOrientationOf(orientation: UIImageOrientation): CameraOrienta
         CameraOrientation.DOWN
     UIImageOrientation.UIImageOrientationLeft, UIImageOrientation.UIImageOrientationLeftMirrored ->
         CameraOrientation.LEFT
-    UIImageOrientation.UIImageOrientationRight, UIImageOrientation.UIImageOrientationRightMirrored ->
-        CameraOrientation.RIGHT
+    // UIImageOrientationRight, UIImageOrientationRightMirrored (the shared iOS metadata sees an expect enum)
+    else -> CameraOrientation.RIGHT
 }
 
 /** Whether this [UIImageOrientation] is mirrored. */
 internal val UIImageOrientation.isMirrored: Boolean
     get() = when (this) {
-        UIImageOrientation.UIImageOrientationUp,
-        UIImageOrientation.UIImageOrientationDown,
-        UIImageOrientation.UIImageOrientationLeft,
-        UIImageOrientation.UIImageOrientationRight,
-        -> false
         UIImageOrientation.UIImageOrientationUpMirrored,
         UIImageOrientation.UIImageOrientationDownMirrored,
         UIImageOrientation.UIImageOrientationLeftMirrored,
         UIImageOrientation.UIImageOrientationRightMirrored,
         -> true
+        else -> false
     }
 
 /**
