@@ -62,5 +62,7 @@ the gestures with `rememberGestureControllers` (or `VisionCamera.createZoomGestu
 On iOS, the focus, exposure and white balance can also be locked manually: `setFocusLocked(lensPosition)`,
 `setExposureLocked(duration, iso)`, `setWhiteBalanceLocked(gains)`, or `lockCurrentFocus`, `lockCurrentExposure`
 and `lockCurrentWhiteBalance` to keep the current values. `resetFocus` returns to continuous auto modes.
+`Camera(onSubjectAreaChanged = { ... })` is called when the scene changes substantially, e.g. when the user pans
+away from what was in focus: a good time to reset a locked focus.
 `enableTorchWithStrength` turns the torch on at a custom strength where `device.supportsTorchStrength`.
 

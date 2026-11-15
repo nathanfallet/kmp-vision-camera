@@ -14,8 +14,7 @@
 
 KMP Vision Camera is a high-performance camera library for Kotlin Multiplatform (Android and iOS). It gives access to
 the full power of the native camera APIs (CameraX and Camera2 on Android, AVFoundation on iOS) through a single
-Kotlin API, from a simple preview to advanced session configuration, and soon photo, video and real-time frame
-processing.
+Kotlin API, from a simple preview to advanced session configuration, photo, video and real-time frame processing.
 
 * **Documentation:** [visioncamera.nathanfallet.me](https://visioncamera.nathanfallet.me)
 * **API reference:** [visioncamera.nathanfallet.me/api](https://visioncamera.nathanfallet.me/api)
@@ -44,9 +43,10 @@ Early development. What works today:
 - [x] Preview output and preview views (Android `View`, iOS `UIView`, Compose), tap-to-focus and pinch-to-zoom
 - [x] Photo output
 - [x] Video output
-- [ ] Frame output (frame processing)
+- [x] Frame output (frame processing), frame renderer and frame converter
+- [x] Depth output and object output (iOS), output synchronizer (iOS)
 - [ ] Barcode scanner
-- [ ] Depth, multi-cam, Skia, resizer…
+- [ ] Multi-cam, Skia, resizer…
 
 ## Installation
 
