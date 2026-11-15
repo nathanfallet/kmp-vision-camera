@@ -62,9 +62,12 @@ private class FrameCounter {
     }
 }
 
-/** An object output scanning QR codes and EAN-13 barcodes on iOS, or `null` on Android. */
+/**
+ * An object output scanning QR codes and EAN-13 barcodes on iOS, or `null` on Android: the native code scanning of
+ * iOS, next to the barcode scanner output (see [rememberBarcodeScan]) which works on both platforms.
+ */
 @Composable
-internal fun rememberCodeScanner(): Pair<CameraObjectOutput?, List<ScannedCode>> {
+internal fun rememberObjectCodeScanner(): Pair<CameraObjectOutput?, List<ScannedCode>> {
     if (!supportsObjectOutput) return null to emptyList()
     var codes by remember { mutableStateOf(emptyList<ScannedCode>()) }
     val objectOutput = rememberObjectOutput(listOf(ScannedObjectType.QR, ScannedObjectType.EAN_13)) { objects ->

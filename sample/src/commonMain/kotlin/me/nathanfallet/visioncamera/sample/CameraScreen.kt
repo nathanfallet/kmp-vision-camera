@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -51,8 +52,24 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
 /**
- * The camera screen: a full-screen preview with tap-to-focus, and controls to take photos, record videos, switch
- * devices, zoom, toggle the torch and pause the session.
+ * What the session streams besides the preview and photo outputs: not all devices can stream 4 outputs at once, and
+ * on Android the frame output and the barcode scanner output are both CameraX `ImageAnalysis` use cases, of which
+ * only one can be bound with the preview and photo use cases.
+ */
+private enum class StreamMode {
+    /** The video output, to record videos. */
+    VIDEO,
+
+    /** The frame output, measuring the frame processor's FPS. */
+    FRAMES,
+
+    /** The barcode scanner output, scanning all barcode formats. */
+    CODES,
+}
+
+/**
+ * The camera screen: a full-screen preview with tap-to-focus, and controls to take photos, record videos, process
+ * frames, scan barcodes, switch devices, zoom, toggle the torch and pause the session.
  */
 @Composable
 fun CameraScreen() {
@@ -67,7 +84,7 @@ fun CameraScreen() {
     var thumbnail by remember { mutableStateOf<ImageBitmap?>(null) }
     var recorder by remember { mutableStateOf<Recorder?>(null) }
     var lastVideo by remember { mutableStateOf<String?>(null) }
-    var enableFrameProcessor by remember { mutableStateOf(false) }
+    var streamMode by remember { mutableStateOf(StreamMode.VIDEO) }
     val scope = rememberCoroutineScope()
 
     val defaultDevice = rememberCameraDevice(position)
@@ -76,16 +93,20 @@ fun CameraScreen() {
     val photoOutput = rememberPhotoOutput()
     val videoOutput = rememberVideoOutput()
     val (frameOutput, frameStats) = rememberFrameStats()
-    val (objectOutput, scannedCodes) = rememberCodeScanner()
+    val (objectOutput, scannedCodes) = rememberObjectCodeScanner()
+    val barcodeScan = rememberBarcodeScan()
     val previewRef = rememberPreviewViewRef()
     val controller = rememberCamera(
         isActive = isActive,
         device = device ?: position,
-        // The frame processor replaces the video output, as not all devices can stream 4 outputs at once.
         outputs = listOfNotNull(
             previewOutput,
             photoOutput,
-            if (enableFrameProcessor) frameOutput else videoOutput,
+            when (streamMode) {
+                StreamMode.VIDEO -> videoOutput
+                StreamMode.FRAMES -> frameOutput
+                StreamMode.CODES -> barcodeScan.output
+            },
             objectOutput,
         ),
         constraints = listOf(FPSConstraint(30.0)),
@@ -98,6 +119,7 @@ fun CameraScreen() {
         onStopped = { isRunning = false },
         onError = { lastError = it.message ?: it.toString() },
     )
+    val barcodeToCameraPoint = rememberBarcodeOutputPointConverter(barcodeScan.output, controller?.device)
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         val gestureControllers = rememberGestureControllers(
@@ -112,6 +134,14 @@ fun CameraScreen() {
             ref = previewRef,
         )
         ScannedCodesOverlay(codes = scannedCodes, previewRef = previewRef, modifier = Modifier.fillMaxSize())
+        if (streamMode == StreamMode.CODES) {
+            BarcodesOverlay(
+                barcodes = barcodeScan.barcodes,
+                toCameraPoint = barcodeToCameraPoint,
+                previewRef = previewRef,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         Column(
             modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),
@@ -123,9 +153,10 @@ fun CameraScreen() {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
-                frameStats = frameStats.takeIf { enableFrameProcessor },
+                frameStats = frameStats.takeIf { streamMode == StreamMode.FRAMES },
                 scannedCodes = scannedCodes.mapNotNull { it.value },
-                error = lastError,
+                barcode = barcodeScan.lastBarcode?.describe()?.takeIf { streamMode == StreamMode.CODES },
+                error = lastError ?: barcodeScan.error?.takeIf { streamMode == StreamMode.CODES },
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (showDevices) {
@@ -173,12 +204,11 @@ fun CameraScreen() {
                                 }
                             }
                         },
-                        enabled = controller != null && !enableFrameProcessor,
+                        enabled = controller != null && streamMode == StreamMode.VIDEO,
                     ) { Text(if (recorder != null) "Stop" else "Record") }
-                    FilledTonalButton(
-                        onClick = { enableFrameProcessor = !enableFrameProcessor },
-                        enabled = recorder == null,
-                    ) { Text(if (enableFrameProcessor) "Frames off" else "Frames") }
+                    listOf("Frames" to StreamMode.FRAMES, "Codes" to StreamMode.CODES).forEach { (label, mode) ->
+                        ModeButton(label, mode, current = streamMode, enabled = recorder == null) { streamMode = it }
+                    }
                     thumbnail?.let {
                         Image(
                             bitmap = it,
@@ -223,6 +253,7 @@ private fun StatusPanel(
     lastVideo: String?,
     frameStats: String?,
     scannedCodes: List<String>,
+    barcode: String?,
     error: String?,
 ) {
     Column(
@@ -241,8 +272,27 @@ private fun StatusPanel(
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
         if (frameStats != null) Text("Frames: $frameStats", color = Color.White)
-        scannedCodes.forEach { Text("Code: $it", color = Color.Green) }
+        scannedCodes.forEach { Text("Object: $it", color = Color.Green) }
+        if (barcode != null) Text("Barcode: $barcode", color = Color.Cyan)
         if (error != null) Text("Error: $error", color = Color.Red)
+    }
+}
+
+/** Toggles [mode] on (a filled button) or off, back to [StreamMode.VIDEO]. */
+@Composable
+private fun ModeButton(
+    label: String,
+    mode: StreamMode,
+    current: StreamMode,
+    enabled: Boolean,
+    onModeChange: (StreamMode) -> Unit,
+) {
+    val isSelected = mode == current
+    val onClick = { onModeChange(if (isSelected) StreamMode.VIDEO else mode) }
+    if (isSelected) {
+        Button(onClick = onClick, enabled = enabled) { Text(label) }
+    } else {
+        FilledTonalButton(onClick = onClick, enabled = enabled) { Text(label) }
     }
 }
 
