@@ -21,7 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * V5's `HybridBarcodeScannerOutput`).
  *
  * Frames arriving while the previous one is still being scanned are dropped. The [Barcode] coordinates are relative
- * to the upright frame (ML Kit is given the frame's `rotationDegrees`), like V5.
+ * to the scanned frame's raw (un-rotated) buffer, the Frame coordinate system, as on iOS (V5 reports them in the
+ * upright image ML Kit scanned, after the frame's `rotationDegrees`).
  */
 internal class AndroidBarcodeScannerOutput(
     private val options: BarcodeScannerOutputOptions,
@@ -87,8 +88,11 @@ internal class AndroidBarcodeScannerOutput(
         }
         try {
             // Limitation (as in V5): the MirrorMode is not taken into account.
-            scanner.process(imageProxy.toInputImage())
-                .addOnSuccessListener { barcodes -> options.onBarcodeScanned(barcodes.map { AndroidBarcode(it) }) }
+            val input = imageProxy.toMLKitInput()
+            scanner.process(input.image)
+                .addOnSuccessListener { barcodes ->
+                    options.onBarcodeScanned(barcodes.map { AndroidBarcode(it, input.space) })
+                }
                 .addOnFailureListener { error -> options.onError(error) }
                 .addOnCompleteListener {
                     imageProxy.close()

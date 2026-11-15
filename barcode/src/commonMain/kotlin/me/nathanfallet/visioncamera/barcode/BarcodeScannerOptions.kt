@@ -32,7 +32,11 @@ data class BarcodeScannerOutputOptions(
      * available buffers for better detail.
      */
     val outputResolution: BarcodeScannerOutputResolution = BarcodeScannerOutputResolution.PREVIEW,
-    /** Called whenever barcodes have been detected. */
+    /**
+     * Called whenever barcodes have been detected.
+     *
+     * All [Barcode] coordinates are in the coordinate system of the Frame they were detected in (its raw buffer).
+     */
     val onBarcodeScanned: (barcodes: List<Barcode>) -> Unit,
     /** Called when there was an error detecting barcodes. */
     val onError: (error: Throwable) -> Unit,
