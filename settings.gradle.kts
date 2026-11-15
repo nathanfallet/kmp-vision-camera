@@ -25,6 +25,12 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // Skiko's Android artifacts (used by the skia module) are only published on JetBrains' repository.
+        maven("https://packages.jetbrains.team/maven/p/cmp/dev") {
+            mavenContent {
+                includeModuleByRegex("org\\.jetbrains\\.skiko", "skiko-android.*")
+            }
+        }
     }
 }
 
@@ -55,6 +61,9 @@ include(":resizer")
 
 // The optional Compose integration of the resizer module (me.nathanfallet.visioncamera.resizer.compose).
 include(":resizer-compose")
+
+// The optional Skia rendering module (me.nathanfallet.visioncamera.skia), port of V5's skia package, built on Skiko.
+include(":skia")
 
 // The demo app: shared Compose UI, and its thin Android application (AGP 9 needs the application plugin in its own
 // module). The iOS app is the Xcode project in sample-ios. Not published.

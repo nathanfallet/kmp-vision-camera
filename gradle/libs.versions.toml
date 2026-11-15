@@ -23,6 +23,12 @@ mlkit-barcode-scanning = "17.3.0"
 # Google Play Services location (FusedLocationProviderClient), as in VisionCameraLocation V5.
 play-services-location = "21.4.0"
 androidx-core = "1.17.0"
+# Skiko (JetBrains' Kotlin bindings of Skia), at the version Compose Multiplatform uses on iOS so that iOS apps link a
+# single Skia. Its Android artifacts are only published on JetBrains' repository (see settings.gradle.kts).
+skiko = "0.144.6"
+# The instrumented tests of the skia module (on a device or an emulator).
+androidx-test-runner = "1.7.0"
+junit = "4.13.2"
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -51,6 +57,11 @@ camerax-extensions = { module = "androidx.camera:camera-extensions", version.ref
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkit-barcode-scanning" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
+skiko-android-runtime-arm64 = { module = "org.jetbrains.skiko:skiko-android-runtime-arm64", version.ref = "skiko" }
+skiko-android-runtime-x64 = { module = "org.jetbrains.skiko:skiko-android-runtime-x64", version.ref = "skiko" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+junit = { module = "junit:junit", version.ref = "junit" }
 androidx-lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }

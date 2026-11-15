@@ -1,0 +1,9 @@
+# Native helpers of the skia module's iOS implementation (src/iosMain/objc), see VisionCameraSkia.h.
+# libVisionCameraSkia.a is built for each target by the skia module's buildIosNativeLibrary* tasks, and embedded in
+# the klib. Its Skia symbols come from skiko's libskia.a, and its C++ runtime from the libc++ that skiko links.
+language = C
+package = me.nathanfallet.visioncamera.skia.interop
+headers = VisionCameraSkia.h
+headerFilter = VisionCameraSkia.h
+staticLibraries = libVisionCameraSkia.a
+linkerOpts = -framework Metal -framework CoreVideo
