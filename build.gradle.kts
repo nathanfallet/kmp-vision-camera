@@ -28,11 +28,15 @@ dependencies {
     dokka(projects.compose)
     dokka(projects.barcode)
     dokka(projects.barcodeCompose)
+    dokka(projects.location)
+    dokka(projects.locationCompose)
 
     kover(projects.core)
     kover(projects.compose)
     kover(projects.barcode)
     kover(projects.barcodeCompose)
+    kover(projects.location)
+    kover(projects.locationCompose)
 }
 
 // core's iOS code uses an Objective-C cinterop library (see core/build.gradle.kts), which needs Xcode: on other hosts

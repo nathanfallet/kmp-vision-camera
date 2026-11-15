@@ -20,6 +20,9 @@ androidx-activity = "1.13.0"
 jetbrains-lifecycle = "2.10.0"
 # Google ML Kit barcode scanning (bundled model), as in VisionCamera V5's barcode-scanner package.
 mlkit-barcode-scanning = "17.3.0"
+# Google Play Services location (FusedLocationProviderClient), as in VisionCameraLocation V5.
+play-services-location = "21.4.0"
+androidx-core = "1.17.0"
 
 [plugins]
 multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -46,6 +49,8 @@ camerax-video = { module = "androidx.camera:camera-video", version.ref = "camera
 camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 camerax-extensions = { module = "androidx.camera:camera-extensions", version.ref = "camerax" }
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkit-barcode-scanning" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-lifecycle-runtime = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "androidx-activity" }
