@@ -26,7 +26,9 @@ allprojects {
 dependencies {
     dokka(projects.core)
     dokka(projects.compose)
+    dokka(projects.barcode)
 
     kover(projects.core)
     kover(projects.compose)
+    kover(projects.barcode)
 }
