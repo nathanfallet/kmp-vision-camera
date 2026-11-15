@@ -98,8 +98,9 @@ typealias SkiaRender = (onDraw: (state: SkiaOnFrameState) -> Unit) -> Unit
  *                 SamplingMode.LINEAR,
  *             )
  *             paint.shader = effect.makeShader(null, arrayOf(imageShader), null)
- *             // Draw the Frame with the shader/paint
- *             canvas.drawImage(frameTexture, 0f, 0f, paint)
+ *             // Draw the Frame with the shader/paint (Skia ignores the shader of a paint given to drawImage)
+ *             val bounds = Rect.makeWH(frameTexture.width.toFloat(), frameTexture.height.toFloat())
+ *             canvas.drawRect(bounds, paint)
  *         }
  *         frame.dispose()
  *     },

@@ -12,15 +12,15 @@ data class SkiaOnFrameState(
      * The [Frame] wrapped as a drawable GPU texture.
      *
      * The [frameTexture] can either be drawn to the [canvas] directly, in which case it will just be displayed as-is,
-     * or drawn with a [org.jetbrains.skia.Paint], in which case it will be used as an input texture for sampling it
-     * inside a Skia shader.
+     * or sampled inside a Skia shader: draw a rect covering the [frameTexture] with a [org.jetbrains.skia.Paint] whose
+     * shader samples it (Skia ignores the shader of the paint given to `drawImage`).
      *
      * ```kotlin
      * // Draw as-is:
      * canvas.drawImage(frameTexture, 0f, 0f)
      * // Draw with shader:
      * val paint = Paint().apply { shader = ... }
-     * canvas.drawImage(frameTexture, 0f, 0f, paint)
+     * canvas.drawRect(Rect.makeWH(frameTexture.width.toFloat(), frameTexture.height.toFloat()), paint)
      * ```
      *
      * It is only valid during the draw function: it is released right after it returns.
