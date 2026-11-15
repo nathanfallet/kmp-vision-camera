@@ -2,6 +2,7 @@ package me.nathanfallet.visioncamera.compose
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraControllerConfiguration
@@ -52,6 +53,9 @@ import me.nathanfallet.visioncamera.TorchMode
  * @param onInterruptionEnded Called when an interruption ended.
  * @param onPreviewStarted Called when the preview started streaming.
  * @param onPreviewStopped Called when the preview stopped streaming.
+ * @param enableNativeZoomGesture Installs the native pinch-to-zoom gesture. [zoom] must then be `null`.
+ * @param enableNativeTapToFocusGesture Installs the native tap-to-focus gesture.
+ * @param ref A [CameraRef] exposing the controller and preview methods, see [rememberCameraRef].
  */
 @Suppress("LongParameterList")
 @Composable
@@ -79,7 +83,14 @@ fun Camera(
     onInterruptionEnded: (() -> Unit)? = null,
     onPreviewStarted: (() -> Unit)? = null,
     onPreviewStopped: (() -> Unit)? = null,
+    enableNativeZoomGesture: Boolean = false,
+    enableNativeTapToFocusGesture: Boolean = false,
+    ref: CameraRef? = null,
 ) {
+    require(!enableNativeZoomGesture || zoom == null) {
+        "`zoom` must not be set if `enableNativeZoomGesture` is enabled!"
+    }
+
     // 1. Create a PreviewOutput for the Camera
     val previewOutput = rememberPreviewOutput()
 
@@ -104,13 +115,23 @@ fun Camera(
         onInterruptionEnded = onInterruptionEnded,
     )
     LaunchedEffect(controller) { onControllerChanged?.invoke(controller) }
+    SideEffect { ref?.controller = controller }
 
-    // 3. Display the preview
+    // 3. Attach the native gesture controllers
+    val gestureControllers = rememberGestureControllers(
+        controller = controller,
+        enableNativeTapToFocusGesture = enableNativeTapToFocusGesture,
+        enableNativeZoomGesture = enableNativeZoomGesture,
+    )
+
+    // 4. Display the preview
     NativePreviewView(
         previewOutput = previewOutput,
         modifier = modifier,
         resizeMode = resizeMode,
         implementationMode = implementationMode,
+        gestureControllers = gestureControllers,
+        ref = ref?.preview,
         onPreviewStarted = onPreviewStarted,
         onPreviewStopped = onPreviewStopped,
     )
