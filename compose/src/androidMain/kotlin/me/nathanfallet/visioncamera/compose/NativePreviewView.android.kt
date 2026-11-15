@@ -16,6 +16,7 @@ import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.PreviewImplementationMode
 import me.nathanfallet.visioncamera.PreviewResizeMode
 import me.nathanfallet.visioncamera.PreviewView
+import me.nathanfallet.visioncamera.ScannedObject
 
 /** Displays the Camera feed in a CameraX-backed Android [PreviewView], see the common declaration. */
 @Suppress("LongParameterList")
@@ -64,4 +65,7 @@ private class AndroidPreviewViewHandle(private val view: PreviewView) : PreviewV
 
     override fun convertViewPointToCameraPoint(viewPoint: Offset): Point =
         view.convertViewPointToCameraPoint(Point(viewPoint.x.toDouble(), viewPoint.y.toDouble()))
+
+    override fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
+        view.convertScannedObjectCoordinatesToViewCoordinates(scannedObject)
 }

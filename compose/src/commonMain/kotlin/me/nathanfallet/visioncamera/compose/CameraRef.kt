@@ -11,6 +11,7 @@ import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.FocusOptions
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
+import me.nathanfallet.visioncamera.ScannedObject
 import me.nathanfallet.visioncamera.VisionCameraException
 
 /**
@@ -72,6 +73,10 @@ class CameraRef internal constructor() {
 
     /** See [PreviewViewRef.convertViewPointToCameraPoint]. */
     fun convertViewPointToCameraPoint(viewPoint: Offset): Point = preview.convertViewPointToCameraPoint(viewPoint)
+
+    /** See [PreviewViewRef.convertScannedObjectCoordinatesToViewCoordinates]. */
+    fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
+        preview.convertScannedObjectCoordinatesToViewCoordinates(scannedObject)
 }
 
 /**

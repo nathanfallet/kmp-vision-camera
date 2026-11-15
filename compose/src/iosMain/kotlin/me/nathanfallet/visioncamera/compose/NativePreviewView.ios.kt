@@ -17,6 +17,7 @@ import me.nathanfallet.visioncamera.Point
 import me.nathanfallet.visioncamera.PreviewImplementationMode
 import me.nathanfallet.visioncamera.PreviewResizeMode
 import me.nathanfallet.visioncamera.PreviewView
+import me.nathanfallet.visioncamera.ScannedObject
 
 /** Displays the Camera feed in an AVFoundation-backed iOS [PreviewView], see the common declaration. */
 @Suppress("LongParameterList", "UnusedParameter")
@@ -71,4 +72,7 @@ private class IosPreviewViewHandle(private val view: PreviewView, private val de
     override fun convertViewPointToCameraPoint(viewPoint: Offset): Point = view.convertViewPointToCameraPoint(
         Point((viewPoint.x / density).toDouble(), (viewPoint.y / density).toDouble()),
     )
+
+    override fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
+        view.convertScannedObjectCoordinatesToViewCoordinates(scannedObject).scaled(density.toDouble())
 }

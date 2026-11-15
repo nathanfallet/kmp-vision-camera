@@ -7,8 +7,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import me.nathanfallet.visioncamera.CameraDevice
 import me.nathanfallet.visioncamera.CameraDeviceFactory
+import me.nathanfallet.visioncamera.CameraExtension
 import me.nathanfallet.visioncamera.DeviceFilter
 import me.nathanfallet.visioncamera.TargetCameraPosition
 import me.nathanfallet.visioncamera.VisionCamera
@@ -63,4 +65,31 @@ fun rememberCameraDevice(position: TargetCameraPosition, filter: DeviceFilter? =
         onDispose { subscription.remove() }
     }
     return device
+}
+
+/**
+ * Get a list of all available [CameraExtension]s for this specific [device] (the equivalent of VisionCamera's
+ * `useCameraDeviceExtensions`). It is empty while loading, or if [device] is `null`.
+ *
+ * ```kotlin
+ * val device = rememberCameraDevice(TargetCameraPosition.BACK)
+ * val extensions = rememberCameraDeviceExtensions(device)
+ * // ...enable extension if available
+ * ```
+ */
+@Suppress("TooGenericExceptionCaught")
+@Composable
+fun rememberCameraDeviceExtensions(device: CameraDevice?): List<CameraExtension> {
+    val deviceFactory = rememberCameraDeviceFactory()
+    return produceState(emptyList(), device, deviceFactory) {
+        if (device == null || deviceFactory == null) return@produceState
+        // V5 leaves a failed lookup as an unhandled Promise rejection: log it instead of crashing the composition.
+        try {
+            value = deviceFactory.getSupportedExtensions(device)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("VisionCamera error: Failed to get the extensions of ${device.id}: $e")
+        }
+    }.value
 }

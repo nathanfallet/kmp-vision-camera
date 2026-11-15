@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraControllerConfiguration
 import me.nathanfallet.visioncamera.CameraDeviceOrPosition
+import me.nathanfallet.visioncamera.CameraOrientation
 import me.nathanfallet.visioncamera.CameraOutput
 import me.nathanfallet.visioncamera.CameraOutputConfiguration
 import me.nathanfallet.visioncamera.CameraSession
@@ -26,6 +27,7 @@ import me.nathanfallet.visioncamera.CameraSessionConnection
 import me.nathanfallet.visioncamera.Constraint
 import me.nathanfallet.visioncamera.InterruptionReason
 import me.nathanfallet.visioncamera.MirrorMode
+import me.nathanfallet.visioncamera.OrientationSource
 import me.nathanfallet.visioncamera.TorchMode
 import me.nathanfallet.visioncamera.VisionCamera
 
@@ -33,8 +35,8 @@ import me.nathanfallet.visioncamera.VisionCamera
  * Use the Camera (the equivalent of VisionCamera's `useCamera`).
  *
  * This creates a [CameraSession], configures it with the [device] and [outputs] whenever they change, starts it
- * while [isActive] is `true`, forwards its events to the given callbacks, applies [zoom], [exposure] and
- * [torchMode] declaratively, and returns the [CameraController].
+ * while [isActive] is `true`, applies the [orientationSource]'s orientation to all [outputs], forwards its events to
+ * the given callbacks, applies [zoom], [exposure] and [torchMode] declaratively, and returns the [CameraController].
  *
  * ```kotlin
  * val previewOutput = rememberPreviewOutput()
@@ -52,6 +54,8 @@ import me.nathanfallet.visioncamera.VisionCamera
  * @param outputs The [CameraOutput]s the [device] streams into.
  * @param constraints [Constraint]s the session tries to match, ranked by priority.
  * @param mirrorMode Whether the outputs are mirrored. [MirrorMode.AUTO] mirrors selfie cameras.
+ * @param orientationSource The [OrientationSource] whose orientation is automatically applied to all [outputs] (see
+ * [CameraOutput.outputOrientation]), or `null` to set it yourself (VisionCamera's `'custom'`).
  * @param zoom The zoom value, applied declaratively.
  * @param exposure The exposure bias, applied declaratively.
  * @param torchMode The torch mode, applied declaratively.
@@ -64,6 +68,12 @@ import me.nathanfallet.visioncamera.VisionCamera
  * @param onError Called when the session encountered an error.
  * @param onInterruptionStarted Called when the session was interrupted.
  * @param onInterruptionEnded Called when an interruption ended.
+ * @param onSubjectAreaChanged Called when the subject area substantially changes, e.g. when the user pans away from a
+ * scene previously in focus: a good point to reset locked focus. iOS only, like V5, see
+ * [CameraController.addSubjectAreaChangedListener].
+ * @param onUIRotationChanged Called when the output orientation (driven by [orientationSource]) or the interface
+ * orientation changes, with the rotation in degrees (`-90`, `0`, `90` or `180`) that UI elements such as Camera
+ * controls need to appear upright.
  * @return The [CameraController], or `null` while the session is not configured yet.
  */
 @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
@@ -74,6 +84,7 @@ fun rememberCamera(
     outputs: List<CameraOutput> = emptyList(),
     constraints: List<Constraint> = emptyList(),
     mirrorMode: MirrorMode = MirrorMode.AUTO,
+    orientationSource: OrientationSource? = OrientationSource.DEVICE,
     zoom: Double? = null,
     exposure: Double? = null,
     torchMode: TorchMode? = null,
@@ -86,6 +97,8 @@ fun rememberCamera(
     onError: (Throwable) -> Unit = { println("VisionCamera error: $it") },
     onInterruptionStarted: ((InterruptionReason) -> Unit)? = null,
     onInterruptionEnded: (() -> Unit)? = null,
+    onSubjectAreaChanged: (() -> Unit)? = null,
+    onUIRotationChanged: ((rotation: Int) -> Unit)? = null,
 ): CameraController? {
     val currentOnSessionConfigSelected by rememberUpdatedState(onSessionConfigSelected)
     val currentOnConfigured by rememberUpdatedState(onConfigured)
@@ -94,6 +107,8 @@ fun rememberCamera(
     val currentOnError by rememberUpdatedState(onError)
     val currentOnInterruptionStarted by rememberUpdatedState(onInterruptionStarted)
     val currentOnInterruptionEnded by rememberUpdatedState(onInterruptionEnded)
+    val currentOnSubjectAreaChanged by rememberUpdatedState(onSubjectAreaChanged)
+    val currentOnUIRotationChanged by rememberUpdatedState(onUIRotationChanged)
     val currentZoom by rememberUpdatedState(zoom)
     val currentExposure by rememberUpdatedState(exposure)
 
@@ -119,7 +134,20 @@ fun rememberCamera(
         onDispose { subscriptions.forEach { it.remove() } }
     }
 
-    // 3. Configure the session with the input and outputs to get a CameraController.
+    // 3. Update the output orientations.
+    val orientation = rememberOrientation(orientationSource)
+    LaunchedEffect(orientation, outputs) {
+        if (orientation == null) return@LaunchedEffect
+        outputs.forEach { it.outputOrientation = orientation }
+    }
+
+    // 3.1. Call the onUIRotationChanged listener.
+    val hasOnUIRotationChanged = onUIRotationChanged != null
+    val interfaceOrientation = rememberOrientation(if (hasOnUIRotationChanged) OrientationSource.INTERFACE else null)
+    val uiRotation = getUIRotation(orientation ?: CameraOrientation.UP, interfaceOrientation ?: CameraOrientation.UP)
+    LaunchedEffect(hasOnUIRotationChanged, uiRotation) { currentOnUIRotationChanged?.invoke(uiRotation) }
+
+    // 4. Configure the session with the input and outputs to get a CameraController.
     var controller by remember(session) { mutableStateOf<CameraController?>(null) }
     LaunchedEffect(session, device, outputs, constraints, mirrorMode, sessionConfiguration) {
         if (session == null) return@LaunchedEffect
@@ -137,19 +165,30 @@ fun rememberCamera(
         currentOnConfigured?.invoke()
     }
 
-    // 4. Configure the controller.
+    // 5. Configure the controller.
     LaunchedEffect(controller, controllerConfiguration) {
         controller?.let { runCatchingCamera(currentOnError) { it.configure(controllerConfiguration) } }
     }
 
-    // 5. Start (or stop) the session if we have a controller and isActive is true.
+    // 6. Start (or stop) the session if we have a controller and isActive is true.
     val shouldRun = isActive && controller != null
     LaunchedEffect(session, shouldRun) {
         if (session == null) return@LaunchedEffect
         runCatchingCamera(currentOnError) { if (shouldRun) session.start() else session.stop() }
     }
 
-    // 6. Update the controller's declarative props.
+    // 7. Forward the controller events.
+    val hasOnSubjectAreaChanged = onSubjectAreaChanged != null
+    DisposableEffect(controller, hasOnSubjectAreaChanged) {
+        val subscription = if (hasOnSubjectAreaChanged) {
+            controller?.addSubjectAreaChangedListener { currentOnSubjectAreaChanged?.invoke() }
+        } else {
+            null
+        }
+        onDispose { subscription?.remove() }
+    }
+
+    // 8. Update the controller's declarative props.
     LaunchedEffect(controller, zoom) {
         if (zoom != null) controller?.let { runCatchingCamera(currentOnError) { it.setZoom(zoom) } }
     }
@@ -160,7 +199,7 @@ fun rememberCamera(
         if (torchMode != null) controller?.let { runCatchingCamera(currentOnError) { it.setTorchMode(torchMode) } }
     }
 
-    // 7. Give the user the controller.
+    // 9. Give the user the controller.
     return controller
 }
 

@@ -162,6 +162,16 @@ class PreviewView @JvmOverloads constructor(
         return inverted.convertPoint(viewPoint)
     }
 
+    /**
+     * Converts the coordinates of a [ScannedObject] into view coordinates. Not supported on Android, like V5:
+     * [ScannedObject]s are only produced on iOS.
+     *
+     * @throws VisionCameraException Always.
+     */
+    @Suppress("UnusedParameter")
+    fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
+        throw VisionCameraException("Transforming Scanned Objects into View Coordinates is not supported on Android!")
+
     private fun connectPreviewOutput(previewOutput: CameraPreviewOutput) {
         val output = previewOutput as? AndroidPreviewOutput
             ?: throw VisionCameraException("PreviewOutput was not created by VisionCamera!")

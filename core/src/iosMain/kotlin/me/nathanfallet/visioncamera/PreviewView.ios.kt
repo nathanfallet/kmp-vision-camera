@@ -159,6 +159,29 @@ class PreviewView : UIView {
     }
 
     /**
+     * Returns a new [ScannedObject] where all coordinates of the given [scannedObject] (its bounding box, and the
+     * corner points of a [ScannedCode]) are converted into view coordinates, relative to this view. Uses
+     * `AVCaptureVideoPreviewLayer.transformedMetadataObject(for:)`, so orientation, scaling and cropping are taken
+     * into account.
+     *
+     * @throws VisionCameraException If this view has no [previewOutput] yet, if the [scannedObject] was not created
+     * by VisionCamera, or if it cannot be transformed.
+     */
+    @Suppress("ThrowsCount")
+    fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject {
+        val previewLayer = previewLayer ?: throw VisionCameraException(
+            "Cannot convert Scanned Object to view coordinates - PreviewView isn't ready yet!",
+        )
+        val nativeObject = scannedObject as? NativeScannedObject<*>
+            ?: throw VisionCameraException("The given `scannedObject` is not of type `NativeScannedObject`!")
+        val transformedObject = previewLayer.transformedMetadataObjectForMetadataObject(nativeObject.metadataObject)
+            ?: throw VisionCameraException(
+                "Failed to transform the Scanned Object's coordinates into view coordinates!",
+            )
+        return createScannedObject(transformedObject)
+    }
+
+    /**
      * Resizes the preview layer to this view's bounds (port of V5's `AutoLayerResizingView.swift`).
      */
     override fun layoutSubviews() {

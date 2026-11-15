@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
 import me.nathanfallet.visioncamera.MeteringPoint
 import me.nathanfallet.visioncamera.Point
+import me.nathanfallet.visioncamera.ScannedObject
 import me.nathanfallet.visioncamera.VisionCameraException
 
 /**
@@ -17,6 +18,8 @@ internal interface PreviewViewHandle {
     fun convertCameraPointToViewPoint(cameraPoint: Point): Offset
 
     fun convertViewPointToCameraPoint(viewPoint: Offset): Point
+
+    fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject
 }
 
 /**
@@ -59,6 +62,16 @@ class PreviewViewRef internal constructor() {
      */
     fun convertViewPointToCameraPoint(viewPoint: Offset): Point =
         requireHandle().convertViewPointToCameraPoint(viewPoint)
+
+    /**
+     * Returns a new [ScannedObject] where all coordinates of the given [scannedObject] (its bounding box, and the
+     * corner points of a [me.nathanfallet.visioncamera.ScannedCode]) are converted into view coordinates, in Compose
+     * pixels. iOS only, like V5.
+     *
+     * @throws VisionCameraException If the preview is not ready yet, or on Android.
+     */
+    fun convertScannedObjectCoordinatesToViewCoordinates(scannedObject: ScannedObject): ScannedObject =
+        requireHandle().convertScannedObjectCoordinatesToViewCoordinates(scannedObject)
 }
 
 /**

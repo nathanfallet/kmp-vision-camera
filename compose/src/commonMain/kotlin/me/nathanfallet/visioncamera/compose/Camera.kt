@@ -13,6 +13,7 @@ import me.nathanfallet.visioncamera.CameraSessionConfiguration
 import me.nathanfallet.visioncamera.Constraint
 import me.nathanfallet.visioncamera.InterruptionReason
 import me.nathanfallet.visioncamera.MirrorMode
+import me.nathanfallet.visioncamera.OrientationSource
 import me.nathanfallet.visioncamera.PreviewImplementationMode
 import me.nathanfallet.visioncamera.PreviewResizeMode
 import me.nathanfallet.visioncamera.TorchMode
@@ -36,6 +37,8 @@ import me.nathanfallet.visioncamera.TorchMode
  * @param outputs Additional [CameraOutput]s, besides the preview.
  * @param constraints [Constraint]s the session tries to match, ranked by priority.
  * @param mirrorMode Whether the outputs are mirrored. [MirrorMode.AUTO] mirrors selfie cameras.
+ * @param orientationSource The [OrientationSource] whose orientation is automatically applied to all outputs (see
+ * [CameraOutput.outputOrientation]), or `null` to set it yourself (VisionCamera's `'custom'`).
  * @param zoom The zoom value, applied declaratively.
  * @param exposure The exposure bias, applied declaratively.
  * @param torchMode The torch mode, applied declaratively.
@@ -51,6 +54,11 @@ import me.nathanfallet.visioncamera.TorchMode
  * @param onError Called when the session encountered an error.
  * @param onInterruptionStarted Called when the session was interrupted.
  * @param onInterruptionEnded Called when an interruption ended.
+ * @param onSubjectAreaChanged Called when the subject area substantially changes, e.g. when the user pans away from a
+ * scene previously in focus: a good point to reset locked focus. iOS only, like V5.
+ * @param onUIRotationChanged Called when the output orientation (driven by [orientationSource]) or the interface
+ * orientation changes, with the rotation in degrees (`-90`, `0`, `90` or `180`) that UI elements such as Camera
+ * controls need to appear upright.
  * @param onPreviewStarted Called when the preview started streaming.
  * @param onPreviewStopped Called when the preview stopped streaming.
  * @param enableNativeZoomGesture Installs the native pinch-to-zoom gesture. [zoom] must then be `null`.
@@ -66,6 +74,7 @@ fun Camera(
     outputs: List<CameraOutput> = emptyList(),
     constraints: List<Constraint> = emptyList(),
     mirrorMode: MirrorMode = MirrorMode.AUTO,
+    orientationSource: OrientationSource? = OrientationSource.DEVICE,
     zoom: Double? = null,
     exposure: Double? = null,
     torchMode: TorchMode? = null,
@@ -81,6 +90,8 @@ fun Camera(
     onError: (Throwable) -> Unit = { println("VisionCamera error: $it") },
     onInterruptionStarted: ((InterruptionReason) -> Unit)? = null,
     onInterruptionEnded: (() -> Unit)? = null,
+    onSubjectAreaChanged: (() -> Unit)? = null,
+    onUIRotationChanged: ((rotation: Int) -> Unit)? = null,
     onPreviewStarted: (() -> Unit)? = null,
     onPreviewStopped: (() -> Unit)? = null,
     enableNativeZoomGesture: Boolean = false,
@@ -101,6 +112,7 @@ fun Camera(
         outputs = listOf(previewOutput) + outputs,
         constraints = constraints,
         mirrorMode = mirrorMode,
+        orientationSource = orientationSource,
         zoom = zoom,
         exposure = exposure,
         torchMode = torchMode,
@@ -113,6 +125,8 @@ fun Camera(
         onError = onError,
         onInterruptionStarted = onInterruptionStarted,
         onInterruptionEnded = onInterruptionEnded,
+        onSubjectAreaChanged = onSubjectAreaChanged,
+        onUIRotationChanged = onUIRotationChanged,
     )
     LaunchedEffect(controller) { onControllerChanged?.invoke(controller) }
     SideEffect { ref?.controller = controller }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -78,7 +79,8 @@ internal fun ScannedCodesOverlay(codes: List<ScannedCode>, previewRef: PreviewVi
     Canvas(modifier) {
         if (!previewRef.isReady) return@Canvas
         codes.forEach { code ->
-            val points = code.cornerPoints.map { previewRef.convertCameraPointToViewPoint(it) }
+            val viewCode = previewRef.convertScannedObjectCoordinatesToViewCoordinates(code) as ScannedCode
+            val points = viewCode.cornerPoints.map { Offset(it.x.toFloat(), it.y.toFloat()) }
             if (points.size < 2) return@forEach
             val path = Path().apply {
                 moveTo(points.first().x, points.first().y)
