@@ -65,6 +65,9 @@ include(":resizer-compose")
 // The optional Skia rendering module (me.nathanfallet.visioncamera.skia), port of V5's skia package, built on Skiko.
 include(":skia")
 
+// The optional Compose integration of the skia module (me.nathanfallet.visioncamera.skia.compose): SkiaCamera.
+include(":skia-compose")
+
 // The demo app: shared Compose UI, and its thin Android application (AGP 9 needs the application plugin in its own
 // module). The iOS app is the Xcode project in sample-ios. Not published.
 include(":sample")

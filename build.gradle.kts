@@ -33,6 +33,7 @@ dependencies {
     dokka(projects.resizer)
     dokka(projects.resizerCompose)
     dokka(projects.skia)
+    dokka(projects.skiaCompose)
 
     kover(projects.core)
     kover(projects.compose)
@@ -43,6 +44,7 @@ dependencies {
     kover(projects.resizer)
     kover(projects.resizerCompose)
     kover(projects.skia)
+    kover(projects.skiaCompose)
 }
 
 // core's iOS code uses an Objective-C cinterop library (see core/build.gradle.kts), which needs Xcode: on other hosts
