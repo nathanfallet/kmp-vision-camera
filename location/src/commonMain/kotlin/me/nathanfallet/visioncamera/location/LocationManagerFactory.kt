@@ -22,10 +22,8 @@ fun createLocationManager(options: LocationManagerOptions = LocationManagerOptio
 fun createLocation(latitude: Double, longitude: Double): Location = Location(
     latitude = latitude,
     longitude = longitude,
-    timestamp = Clock.System.now().toEpochMilliseconds() / MILLISECONDS_PER_SECOND,
+    timestamp = Clock.System.now().toEpochMilliseconds().toDouble(),
 )
-
-private const val MILLISECONDS_PER_SECOND = 1000.0
 
 /** Creates the [LocationManager] of the current platform. */
 internal expect fun createPlatformLocationManager(options: LocationManagerOptions): LocationManager

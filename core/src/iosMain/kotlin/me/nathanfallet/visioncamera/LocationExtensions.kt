@@ -30,6 +30,7 @@ import platform.ImageIO.kCGImagePropertyGPSTimeStamp
 // and AVMetadataItem+libraryTag.swift. V5 wraps a `CLLocation`, we read the common [Location] directly.
 
 private const val MAX_LATITUDE = 90.0
+private const val MILLISECONDS_PER_SECOND = 1_000.0
 private const val MAX_LONGITUDE = 180.0
 
 /** Converts this [Location] to an EXIF GPS dictionary (`kCGImagePropertyGPSDictionary`). */
@@ -37,7 +38,7 @@ internal fun Location.toEXIF(): Map<Any?, Any?> {
     val gps = mutableMapOf<Any?, Any?>()
 
     // GPS timestamps should be UTC
-    val date = NSDate.dateWithTimeIntervalSince1970(timestamp)
+    val date = NSDate.dateWithTimeIntervalSince1970(timestamp / MILLISECONDS_PER_SECOND)
     val dateStamp = gpsDateFormatter("yyyy:MM:dd").stringFromDate(date)
     val timeStamp = gpsDateFormatter("HH:mm:ss.SSS").stringFromDate(date)
 

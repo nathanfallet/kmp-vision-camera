@@ -101,6 +101,6 @@ internal fun Location.toAndroidLocation(): android.location.Location =
         location.altitude = altitude
         location.accuracy = horizontalAccuracy.toFloat()
         location.verticalAccuracyMeters = verticalAccuracy.toFloat()
-        location.time = (timestamp * MILLISECONDS_PER_SECOND).toLong()
+        location.time = timestamp.toLong()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) location.isMock = isMock
     }

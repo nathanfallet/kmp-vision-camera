@@ -5,8 +5,6 @@ import com.google.android.gms.location.Priority
 import me.nathanfallet.visioncamera.Location
 import me.nathanfallet.visioncamera.PermissionStatus
 
-private const val MILLISECONDS_PER_SECOND = 1000.0
-
 /** Maps this [LocationAccuracy] to a Play Services location request priority. */
 internal fun LocationAccuracy.toPriority(): @Priority Int = when (this) {
     LocationAccuracy.LOW -> Priority.PRIORITY_LOW_POWER
@@ -26,13 +24,13 @@ internal fun combinePermissionStatuses(fine: PermissionStatus, coarse: Permissio
     else -> PermissionStatus.DENIED
 }
 
-/** Converts this Android [android.location.Location] to a [Location] (the timestamp being in seconds). */
+/** Converts this Android [android.location.Location] to a [Location] (the timestamp being in milliseconds). */
 internal fun android.location.Location.toLocation(): Location = Location(
     latitude = latitude,
     longitude = longitude,
     altitude = altitude,
     horizontalAccuracy = accuracy.toDouble(),
     verticalAccuracy = verticalAccuracyMeters.toDouble(),
-    timestamp = time / MILLISECONDS_PER_SECOND,
+    timestamp = time.toDouble(),
     isMock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isMock,
 )

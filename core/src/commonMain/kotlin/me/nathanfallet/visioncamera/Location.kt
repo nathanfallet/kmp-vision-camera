@@ -15,7 +15,7 @@ data class Location(
     val horizontalAccuracy: Double = 0.0,
     /** The vertical accuracy, in meters. */
     val verticalAccuracy: Double = 0.0,
-    /** The time the location was measured at, in seconds since the Unix epoch. */
+    /** The time the location was measured at, in milliseconds since the Unix epoch, like V5. */
     val timestamp: Double = 0.0,
     /** Whether the location comes from a mock provider. */
     val isMock: Boolean = false,

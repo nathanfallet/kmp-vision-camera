@@ -16,6 +16,8 @@ import platform.CoreLocation.kCLLocationAccuracyHundredMeters
 import platform.CoreLocation.kCLLocationAccuracyNearestTenMeters
 import platform.Foundation.timeIntervalSince1970
 
+private const val MILLISECONDS_PER_SECOND = 1_000.0
+
 // Port of V5's CL+LocationAccuracy.swift and CL+PermissionStatus.swift.
 
 /** Maps this [LocationAccuracy] to a `CLLocationAccuracy`. */
@@ -34,13 +36,13 @@ internal fun CLAuthorizationStatus.toPermissionStatus(): PermissionStatus = when
     else -> error("Received unknown CLAuthorizationStatus! $this")
 }
 
-/** Converts this `CLLocation` to a [Location] (the timestamp being in seconds since the Unix epoch). */
+/** Converts this `CLLocation` to a [Location] (the timestamp being in milliseconds since the Unix epoch). */
 internal fun CLLocation.toLocation(): Location = Location(
     latitude = coordinate.useContents { latitude },
     longitude = coordinate.useContents { longitude },
     altitude = altitude,
     horizontalAccuracy = horizontalAccuracy,
     verticalAccuracy = verticalAccuracy,
-    timestamp = timestamp.timeIntervalSince1970,
+    timestamp = timestamp.timeIntervalSince1970 * MILLISECONDS_PER_SECOND,
     isMock = sourceInformation?.isSimulatedBySoftware ?: false,
 )
