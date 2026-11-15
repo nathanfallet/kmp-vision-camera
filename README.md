@@ -40,10 +40,10 @@ Early development. What works today:
 - [x] Permissions (camera and microphone)
 - [x] Camera devices: listing, default devices, capabilities, formats, physical devices
 - [x] Camera sessions: configuration with connections and constraints, start/stop, lifecycle, interruptions
-- [x] Camera controller: zoom, torch, exposure bias, low-light boost
-- [x] Preview output and preview views (Android `View`, iOS `UIView`, Compose)
-- [ ] Photo output
-- [ ] Video output
+- [x] Camera controller: zoom, torch, exposure bias, low-light boost, focus and metering, manual controls
+- [x] Preview output and preview views (Android `View`, iOS `UIView`, Compose), tap-to-focus and pinch-to-zoom
+- [x] Photo output
+- [x] Video output
 - [ ] Frame output (frame processing)
 - [ ] Barcode scanner
 - [ ] Depth, multi-cam, Skia, resizer…
