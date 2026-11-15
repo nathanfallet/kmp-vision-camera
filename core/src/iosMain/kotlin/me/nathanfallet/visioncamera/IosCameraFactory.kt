@@ -82,19 +82,22 @@ internal class IosCameraFactory : CameraFactory {
 
     override fun createPreviewOutput(): CameraPreviewOutput = IosCameraPreviewOutput()
 
-    // Phase 1 features below are not implemented on this platform yet.
-
-    override fun createPhotoOutput(options: PhotoOutputOptions): CameraPhotoOutput =
-        notImplementedYet("createPhotoOutput")
+    override fun createPhotoOutput(options: PhotoOutputOptions): CameraPhotoOutput = IosCameraPhotoOutput(options)
 
     override fun createVideoOutput(options: VideoOutputOptions): CameraVideoOutput =
-        notImplementedYet("createVideoOutput")
+        if (options.enablePersistentRecorder) {
+            // On iOS, the `AVCaptureMovieFileOutput` does not allow flipping the Camera while recording, which is a
+            // feature we call "enablePersistentRecorder". So if the user plans on using persistent recordings, we
+            // need to create a custom video output that uses `AVCaptureVideoDataOutput` + `AVAssetWriter` instead.
+            IosCameraVideoFrameOutput(options)
+        } else {
+            IosCameraVideoOutput(options)
+        }
 
-    override fun createZoomGestureController(): ZoomGestureController = notImplementedYet("createZoomGestureController")
+    override fun createZoomGestureController(): ZoomGestureController = IosZoomGestureController()
 
-    override fun createTapToFocusGestureController(): TapToFocusGestureController =
-        notImplementedYet("createTapToFocusGestureController")
+    override fun createTapToFocusGestureController(): TapToFocusGestureController = IosTapToFocusGestureController()
 
     override fun createNormalizedMeteringPoint(x: Double, y: Double, size: Double?): MeteringPoint =
-        notImplementedYet("createNormalizedMeteringPoint")
+        IosMeteringPoint.normalized(x = x, y = y, size = size ?: IosMeteringPoint.DEFAULT_SIZE)
 }

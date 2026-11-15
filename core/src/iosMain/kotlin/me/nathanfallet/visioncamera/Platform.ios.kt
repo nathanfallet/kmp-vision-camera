@@ -14,11 +14,15 @@ import platform.Foundation.NSLog
 import platform.Foundation.NSOperatingSystemVersion
 import platform.Foundation.NSProcessInfo
 import platform.Foundation.NSThread
+import platform.darwin.DISPATCH_TIME_NOW
+import platform.darwin.dispatch_after
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import platform.darwin.dispatch_queue_attr_make_with_qos_class
 import platform.darwin.dispatch_queue_create
 import platform.darwin.dispatch_queue_t
+import platform.darwin.dispatch_time
+import kotlin.time.Duration
 
 /**
  * Whether the current iOS version is at least [major].[minor], the equivalent of Swift's `#available(iOS x.y, *)`.
@@ -45,13 +49,25 @@ internal object Logger {
 }
 
 /**
- * Creates a serial dispatch queue with the given [label] and user-interactive QoS, like V5's session queue.
+ * Creates a serial dispatch queue with the given [label] and QoS class (user-interactive by default, like V5's
+ * session queue).
  */
-internal fun createSerialQueue(label: String): dispatch_queue_t =
-    dispatch_queue_create(label, dispatch_queue_attr_make_with_qos_class(null, QOS_CLASS_USER_INTERACTIVE, 0))
+internal fun createSerialQueue(label: String, qosClass: UInt = QOS_CLASS_USER_INTERACTIVE): dispatch_queue_t =
+    dispatch_queue_create(label, dispatch_queue_attr_make_with_qos_class(null, qosClass, 0))
 
 /** `QOS_CLASS_USER_INTERACTIVE` from `<sys/qos.h>`. */
-private const val QOS_CLASS_USER_INTERACTIVE: UInt = 0x21u
+internal const val QOS_CLASS_USER_INTERACTIVE: UInt = 0x21u
+
+/** `QOS_CLASS_UTILITY` from `<sys/qos.h>`. */
+internal const val QOS_CLASS_UTILITY: UInt = 0x11u
+
+/**
+ * Runs the given [block] on this dispatch queue after the given [delay] (the equivalent of Swift's
+ * `queue.asyncAfter(deadline: .now() + delay)`).
+ */
+internal fun dispatch_queue_t.asyncAfter(delay: Duration, block: () -> Unit) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay.inWholeNanoseconds), this, block)
+}
 
 /**
  * Runs the given [block] on this serial dispatch queue, and suspends until it returned (the equivalent of V5's
