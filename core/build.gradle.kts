@@ -119,6 +119,8 @@ val buildIosNativeLibraries = mapOf(
         targetTriple.set(platform.second)
         libraryName.set("VisionCameraNative")
         outputDirectory.set(layout.buildDirectory.dir("generated/iosNativeLibraries/$targetName"))
+        // Like the iOS cinterop and compilations, which are skipped on other hosts (e.g. the Linux Docs build).
+        onlyIf("Xcode is only available on macOS") { System.getProperty("os.name").startsWith("Mac") }
     }
 }
 
