@@ -108,12 +108,12 @@ class SurfacesCacheTest {
         threadId = 2
         val otherSurface = getSurface(1920, 1080)
         threadId = 1
-        assertSame(ownSurface.context, cache.currentContext())
+        assertSame(ownSurface.context, cache.withCurrentContext { it })
         cache.clear()
         assertEquals(listOf(ownSurface.context to true, otherSurface.context to false), backend.destroyedContexts)
         assertTrue(backend.disposedSurfaces.containsAll(listOf(ownSurface, otherSurface)))
         assertEquals(0, cache.size)
-        assertNull(cache.currentContext())
+        assertNull(cache.withCurrentContext { it })
         assertNotSame(ownSurface, getSurface(1920, 1080), "A new context is created after clearing")
     }
 }

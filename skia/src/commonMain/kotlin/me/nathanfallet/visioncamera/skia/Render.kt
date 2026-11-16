@@ -108,12 +108,14 @@ fun Image.makeNonTextureImage(): Image {
         check(bitmap.allocPixels(ImageInfo(width, height, ColorType.RGBA_8888, ColorAlphaType.PREMUL))) {
             "Failed to allocate a ${width}x$height bitmap!"
         }
-        val context = surfacesCache.currentContext()
-        val isRead = if (context != null) {
-            context.makeCurrent()
-            readPixels(context.directContext, bitmap, 0, 0)
-        } else {
-            readPixels(bitmap, 0, 0)
+        // Hold the thread's context while copying, so that clearSurfacesCache() can't destroy it meanwhile.
+        val isRead = surfacesCache.withCurrentContext { context ->
+            if (context != null) {
+                context.makeCurrent()
+                readPixels(context.directContext, bitmap, 0, 0)
+            } else {
+                readPixels(bitmap, 0, 0)
+            }
         }
         check(isRead) {
             "Failed to copy rendered GPU contents to CPU Image! GPU images must be copied on the thread that " +

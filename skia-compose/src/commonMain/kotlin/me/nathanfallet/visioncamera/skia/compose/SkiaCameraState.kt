@@ -27,7 +27,10 @@ internal class SkiaCameraState {
     @Volatile
     var lastFrameTransform: Transform? = null
 
-    private var isDisposed = false
+    /** Whether the [SkiaCamera] left the composition: Frames still delivered then are not rendered anymore. */
+    @Volatile
+    var isDisposed = false
+        private set
 
     /** Displays the given [frame] (from any thread), closing the previous one. */
     fun post(frame: SkiaPreviewFrame) {

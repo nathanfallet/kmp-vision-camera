@@ -265,10 +265,17 @@ fun SkiaCamera(
     }
 
     // 4. On unmount, clear the Surfaces cache to free up memory.
+    val currentRef by rememberUpdatedState(ref)
     DisposableEffect(state) {
         onDispose {
             state.dispose()
             clearSurfacesCache()
+            // Like a React ref, the ref doesn't point to this unmounted SkiaCamera anymore.
+            currentRef?.takeIf { it.state === state }?.let {
+                it.state = null
+                it.controller = null
+                it.canvas = null
+            }
         }
     }
 
@@ -297,6 +304,8 @@ fun SkiaCamera(
  */
 @Suppress("TooGenericExceptionCaught")
 private fun renderPreviewFrame(frame: Frame, onDraw: (state: SkiaOnFrameState) -> Unit, state: SkiaCameraState) {
+    // The SkiaCamera left: don't create a new GPU context (that nothing would free) for the last Frames delivered.
+    if (state.isDisposed) return
     var snapshot: Image? = null
     try {
         // 1. Render Frame to a Texture (Image) and pass custom onDraw func

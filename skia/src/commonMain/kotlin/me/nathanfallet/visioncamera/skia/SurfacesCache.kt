@@ -70,10 +70,14 @@ internal class SurfacesCache<C : Any, S : Any>(
         }
     }
 
-    /** The GPU context of the current thread, or `null` if it has none. */
-    fun currentContext(): C? {
+    /**
+     * Calls [block] with the GPU context of the current thread (or `null` if it has none, or if it was destroyed),
+     * while no other thread can destroy it.
+     */
+    fun <T> withCurrentContext(block: (context: C?) -> T): T {
         val threadId = currentThreadId()
-        return lock.withLock { threads.firstOrNull { it.threadId == threadId }?.context }
+        val threadCache = lock.withLock { threads.firstOrNull { it.threadId == threadId } } ?: return block(null)
+        return threadCache.lock.withLock { block(threadCache.context.takeUnless { threadCache.isDestroyed }) }
     }
 
     /** Disposes every cached surface and GPU context. */
