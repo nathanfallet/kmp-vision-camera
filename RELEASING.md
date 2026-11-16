@@ -54,9 +54,9 @@ The `me.nathanfallet` namespace must be verified in the Central Portal.
    tag the release and create the GitHub release:
 
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   gh release create v1.0.0 --generate-notes
+   git tag 1.0.0
+   git push origin 1.0.0
+   gh release create 1.0.0 --generate-notes
    ```
 
 The artifacts show up on Maven Central a few minutes after the release, and in the search a few hours later.
