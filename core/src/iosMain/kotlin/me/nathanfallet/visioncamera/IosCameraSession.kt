@@ -100,6 +100,13 @@ internal class IosCameraSession(enableMultiCam: Boolean) : CameraSession {
             configureConnection(connection, isMultiCam)
             configureOutputs(connection)
         }
+        val capturesRawPhotos = connections.any { connection ->
+            connection.outputs.any { (it.output.cameraOutput as? IosCameraPhotoOutput)?.capturesRawPhotos == true }
+        }
+        if (session.applyRawPhotoPreset(capturesRawPhotos)) {
+            // The photo preset picked its own format: fit the outputs (e.g. the max photo dimensions) to it.
+            connections.forEach { configureOutputs(it) }
+        }
 
         // If we have any Dynamic Range Constraints, we disable automatic color space selection on the
         // AVCaptureSession, as we cannot automatically adjust the ColorSpace then.

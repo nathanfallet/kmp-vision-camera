@@ -19,6 +19,11 @@ Camera(device = TargetCameraPosition.BACK, isActive = true, outputs = listOf(pho
 (`NATIVE`, `JPEG`, `HEIC` or `DNG`), the compression `quality` (`0.9` by default) and the `qualityPrioritization`.
 The resolution is negotiated with the other outputs and constraints, so it may not be met exactly.
 
+On iOS, AVFoundation only captures RAW (`DNG`) photos with its photo session preset, which picks the device's photo
+format itself: while a `DNG` PhotoOutput is connected, the format constraints aren't applied (multi-cam sessions
+can't use that preset, so they can't capture RAW photos). VisionCamera V5 always applies the negotiated format,
+so its RAW captures fail instead.
+
 ## Capturing to a file
 
 ```kotlin

@@ -34,6 +34,10 @@ internal class IosCameraPhotoOutput(private val options: PhotoOutputOptions) : C
     override val output: AVCapturePhotoOutput = AVCapturePhotoOutput()
     private val isDisposed = AtomicInt(0)
 
+    /** Whether this output captures RAW photos, which needs the session's photo preset (see [IosCameraSession]). */
+    internal val capturesRawPhotos: Boolean
+        get() = options.containerFormat == TargetPhotoContainerFormat.DNG
+
     private val videoConnection: AVCaptureConnection?
         get() = output.connectionWithMediaType(AVMediaTypeVideo)
 
