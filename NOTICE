@@ -26,7 +26,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-The skia module includes, in skia/src/iosMain/skia-headers, header files of
-Skia (https://skia.org, as built by JetBrains for Skiko:
-https://github.com/JetBrains/skia), distributed under the BSD 3-Clause
-license found in skia/src/iosMain/skia-headers/LICENSE.
+The skia module is compiled against header files of Skia (https://skia.org,
+as built by JetBrains for Skiko: https://github.com/JetBrains/skia), downloaded
+at build time and distributed under the BSD 3-Clause license found in Skia's
+LICENSE file.

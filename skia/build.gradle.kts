@@ -1,6 +1,7 @@
 import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.SourcesJar
+import java.net.URI
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
@@ -48,13 +49,58 @@ mavenPublishing {
  * bindings of Skia (the Skia of Compose Multiplatform on iOS).
  *
  * Frames are wrapped as Skia GPU images without copies, by two small native libraries: an Objective-C++ one on iOS
- * (CVPixelBuffer -> Metal textures -> Skia image, against the vendored Skia headers of src/iosMain/skia-headers), and a
+ * (CVPixelBuffer -> Metal textures -> Skia image, against Skia headers downloaded at build time, see skia-headers.txt), and a
  * JNI one on Android (AHardwareBuffer -> EGLImage -> external OpenGL ES texture).
  */
 
 /**
+ * Downloads the Skia headers listed in skia-headers.txt (the ones VisionCameraSkia.mm includes, and their includes)
+ * from the JetBrains/skia tag skiko is built with, instead of vendoring them in the repository.
+ */
+@CacheableTask
+abstract class DownloadSkiaHeadersTask : DefaultTask() {
+    /** The JetBrains/skia tag, e.g. `m144-22f58c9fd4`. */
+    @get:Input
+    abstract val tag: Property<String>
+
+    /** The header paths, relative to the root of the Skia repository. */
+    @get:Input
+    abstract val headers: ListProperty<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun download() {
+        val output = outputDirectory.get().asFile
+        output.deleteRecursively()
+        (headers.get() + "LICENSE").forEach { path ->
+            val url = "https://raw.githubusercontent.com/JetBrains/skia/${tag.get()}/$path"
+            val bytes = (1..DOWNLOAD_ATTEMPTS).firstNotNullOfOrNull { attempt ->
+                runCatching { URI(url).toURL().openStream().use { it.readBytes() } }
+                    .onFailure { logger.warn("Failed to download $url (attempt $attempt): $it") }
+                    .getOrNull()
+            } ?: throw GradleException("Could not download the Skia header $url")
+            output.resolve(path).apply { parentFile.mkdirs() }.writeBytes(bytes)
+        }
+    }
+
+    private companion object {
+        const val DOWNLOAD_ATTEMPTS = 3
+    }
+}
+
+val downloadSkiaHeaders = tasks.register<DownloadSkiaHeadersTask>("downloadSkiaHeaders") {
+    description = "Downloads the Skia headers the iOS native library is compiled against."
+    tag.set(libs.versions.skia)
+    headers.set(provider { file("skia-headers.txt").readLines().map { it.trim() }.filter { it.isNotEmpty() } })
+    outputDirectory.set(layout.buildDirectory.dir("skia-headers"))
+    onlyIf("Xcode is only available on macOS") { System.getProperty("os.name").startsWith("Mac") }
+}
+
+/**
  * Compiles the Objective-C++ sources of src/iosMain/objc into a static library for one iOS target, with Xcode's
- * clang, against the vendored Skia headers. cinterop (src/nativeInterop/cinterop/VisionCameraSkia.def) embeds the
+ * clang, against the downloaded Skia headers. cinterop (src/nativeInterop/cinterop/VisionCameraSkia.def) embeds the
  * library in the target's klib; its Skia symbols are resolved at link time from skiko's libskia.a.
  */
 @CacheableTask
@@ -134,10 +180,7 @@ val buildIosNativeLibraries = mapOf(
     tasks.register<BuildIosNativeLibraryTask>(taskName) {
         description = "Compiles libVisionCameraSkia.a (Objective-C++) for $targetName with Xcode's clang."
         sources.from(fileTree("src/iosMain/objc"))
-        // The headers included by VisionCameraSkia.mm (and their includes), from the JetBrains/skia tag skiko is built
-        // with (`dependencies.skia` in skiko's gradle.properties: m144-22f58c9fd4 for skiko 0.144.6). Update them
-        // with skiko.
-        skiaHeaders.set(layout.projectDirectory.dir("src/iosMain/skia-headers"))
+        skiaHeaders.set(downloadSkiaHeaders.flatMap { it.outputDirectory })
         sdk.set(platform.first)
         targetTriple.set(platform.second)
         libraryName.set("VisionCameraSkia")

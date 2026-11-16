@@ -26,6 +26,9 @@ androidx-core = "1.17.0"
 # Skiko (JetBrains' Kotlin bindings of Skia), at the version Compose Multiplatform uses on iOS so that iOS apps link a
 # single Skia. Its Android artifacts are only published on JetBrains' repository (see settings.gradle.kts).
 skiko = "0.144.6"
+# The JetBrains/skia tag skiko is built with (`dependencies.skia` in skiko's gradle.properties): the skia module's iOS
+# code is compiled against its headers, downloaded at build time. Update it with skiko.
+skia = "m144-22f58c9fd4"
 # The instrumented tests of the skia module (on a device or an emulator).
 androidx-test-runner = "1.7.0"
 junit = "4.13.2"

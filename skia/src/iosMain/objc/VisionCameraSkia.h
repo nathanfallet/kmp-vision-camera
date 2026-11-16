@@ -6,8 +6,8 @@
 // They wrap a camera CVPixelBuffer as a Skia GPU image without copying it (the equivalent of React Native Skia's
 // `Skia.Image.MakeImageFromNativeBuffer`, which skiko does not have): the pixel buffer's planes become Metal textures
 // through a CVMetalTextureCache, and Skia samples them in place (BGRA directly, YUV with an in-shader conversion).
-// The Skia symbols are resolved at link time from skiko's libskia.a, so the vendored Skia headers (skia-headers/)
-// must match skiko's Skia version.
+// The Skia symbols are resolved at link time from skiko's libskia.a, so the Skia headers it is compiled against
+// (downloaded at build time, see skia/skia-headers.txt) must match skiko's Skia version (`skia` in libs.versions.toml).
 
 #include <stddef.h>
 
