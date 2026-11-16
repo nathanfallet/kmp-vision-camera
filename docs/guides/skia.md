@@ -25,9 +25,9 @@ Your drawing runs on the GPU, and the result is shown by Compose.
 
 ```kotlin
 dependencies {
-    implementation("me.nathanfallet.visioncamera:skia:0.1.0")
+    implementation("me.nathanfallet.visioncamera:skia:1.0.0")
     // For the Compose view (SkiaCamera):
-    implementation("me.nathanfallet.visioncamera:skia-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:skia-compose:1.0.0")
 }
 ```
 

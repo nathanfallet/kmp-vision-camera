@@ -50,12 +50,13 @@ The `me.nathanfallet` namespace must be verified in the Central Portal.
 
    then open [Deployments](https://central.sonatype.com/publishing/deployments), check the files, and click
    **Publish** (or **Drop** to discard it).
-4. Tag the release and create the GitHub release:
+4. Once the artifacts are on Maven Central (check `https://repo1.maven.org/maven2/me/nathanfallet/visioncamera/core/`),
+   tag the release and create the GitHub release:
 
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   gh release create v0.1.0 --generate-notes
+   git tag v1.0.0
+   git push origin v1.0.0
+   gh release create v1.0.0 --generate-notes
    ```
 
 The artifacts show up on Maven Central a few minutes after the release, and in the search a few hours later.

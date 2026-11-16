@@ -12,9 +12,9 @@ or video metadata. The `location` module gives you the device's `Location` and p
 
 ```kotlin
 dependencies {
-    implementation("me.nathanfallet.visioncamera:location:0.1.0")
+    implementation("me.nathanfallet.visioncamera:location:1.0.0")
     // For the Compose helpers (rememberLocation, rememberLocationManager):
-    implementation("me.nathanfallet.visioncamera:location-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:location-compose:1.0.0")
 }
 ```
 

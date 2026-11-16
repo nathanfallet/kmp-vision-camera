@@ -29,9 +29,9 @@ it on the GPU, like VisionCamera's `react-native-vision-camera-resizer`.
 
 ```kotlin
 dependencies {
-    implementation("me.nathanfallet.visioncamera:resizer:0.1.0")
+    implementation("me.nathanfallet.visioncamera:resizer:1.0.0")
     // For the Compose helper (rememberResizer):
-    implementation("me.nathanfallet.visioncamera:resizer-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:resizer-compose:1.0.0")
 }
 ```
 

@@ -84,22 +84,22 @@ Add the dependencies to your `build.gradle.kts`, in the `commonMain` source set:
 
 ```kotlin
 dependencies {
-    implementation("me.nathanfallet.visioncamera:core:0.1.0")
+    implementation("me.nathanfallet.visioncamera:core:1.0.0")
     // Optional, for Compose Multiplatform:
-    implementation("me.nathanfallet.visioncamera:compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:compose:1.0.0")
     // Optional, for barcode scanning:
-    implementation("me.nathanfallet.visioncamera:barcode:0.1.0")
+    implementation("me.nathanfallet.visioncamera:barcode:1.0.0")
     // Optional, for barcode scanning with Compose Multiplatform:
-    implementation("me.nathanfallet.visioncamera:barcode-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:barcode-compose:1.0.0")
     // Optional, for location tags in photos and videos (and its Compose helpers):
-    implementation("me.nathanfallet.visioncamera:location:0.1.0")
-    implementation("me.nathanfallet.visioncamera:location-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:location:1.0.0")
+    implementation("me.nathanfallet.visioncamera:location-compose:1.0.0")
     // Optional, for resizing frames on the GPU (and its Compose helper):
-    implementation("me.nathanfallet.visioncamera:resizer:0.1.0")
-    implementation("me.nathanfallet.visioncamera:resizer-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:resizer:1.0.0")
+    implementation("me.nathanfallet.visioncamera:resizer-compose:1.0.0")
     // Optional, for rendering frames with Skia (and the SkiaCamera Compose view):
-    implementation("me.nathanfallet.visioncamera:skia:0.1.0")
-    implementation("me.nathanfallet.visioncamera:skia-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:skia:1.0.0")
+    implementation("me.nathanfallet.visioncamera:skia-compose:1.0.0")
 }
 ```
 

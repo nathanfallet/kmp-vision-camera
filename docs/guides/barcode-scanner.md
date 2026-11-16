@@ -12,9 +12,9 @@ The `barcode` module detects machine readable codes (barcodes and QR codes) on b
 
 ```kotlin
 dependencies {
-    implementation("me.nathanfallet.visioncamera:barcode:0.1.0")
+    implementation("me.nathanfallet.visioncamera:barcode:1.0.0")
     // For the Compose helpers (CodeScanner, rememberBarcodeScanner, rememberBarcodeScannerOutput):
-    implementation("me.nathanfallet.visioncamera:barcode-compose:0.1.0")
+    implementation("me.nathanfallet.visioncamera:barcode-compose:1.0.0")
 }
 ```
 
