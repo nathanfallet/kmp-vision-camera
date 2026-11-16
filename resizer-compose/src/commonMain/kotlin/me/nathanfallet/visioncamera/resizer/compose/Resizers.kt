@@ -20,6 +20,10 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  * Inspect the returned [ResizerState.error] if the [Resizer] couldn't be created successfully.
  *
+ * As the [Resizer] is disposed on the UI thread while [Frame]s keep arriving on the Frame output's thread, a [Frame]
+ * delivered right as the [options] change or the composable leaves may call [Resizer.resize] on the disposed
+ * [Resizer], which then throws a `VisionCameraException`: catch it if your Frame callback must not throw.
+ *
  * ```kotlin
  * val resizer = rememberResizer(
  *     ResizerOptions(

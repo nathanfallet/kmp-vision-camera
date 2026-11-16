@@ -1,5 +1,6 @@
 package me.nathanfallet.visioncamera.resizer
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -27,12 +28,19 @@ import me.nathanfallet.visioncamera.VisionCameraException
  * @throws VisionCameraException If the GPU pipeline could not be created, e.g. because it is not available on this
  * device ([isResizerAvailable]).
  */
-suspend fun createResizer(options: ResizerOptions): Resizer =
-    // The pipeline is created even if the caller is cancelled meanwhile, so that the Resizer is returned (and the
-    // caller can dispose it) instead of being lost between two threads.
-    withContext(Dispatchers.Default + NonCancellable) {
-        DefaultResizer(createPlatformResizerPipeline(options))
+suspend fun createResizer(options: ResizerOptions): Resizer {
+    var resizer: Resizer? = null
+    try {
+        // The pipeline is always created to the end (it can't be interrupted halfway)...
+        return withContext(Dispatchers.Default + NonCancellable) {
+            DefaultResizer(createPlatformResizerPipeline(options)).also { resizer = it }
+        }
+    } catch (error: CancellationException) {
+        // ...but withContext still throws if the caller was cancelled meanwhile: nobody gets the Resizer, so free it.
+        resizer?.dispose()
+        throw error
     }
+}
 
 /**
  * Returns whether the GPU-accelerated [Resizer] pipeline is available on this device.
