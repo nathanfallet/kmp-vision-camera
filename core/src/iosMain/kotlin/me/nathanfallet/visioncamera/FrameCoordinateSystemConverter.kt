@@ -34,8 +34,9 @@ internal object FrameCoordinateSystemConverter {
     ): CValue<CGAffineTransform> {
         var matrix = CGAffineTransformIdentity.readValue()
 
-        // 1. Counter-rotate by the orientation to get it up-right
-        matrix = when (orientation) {
+        // 1. Counter-rotate by the orientation to get it up-right. The mirror below is applied first (in the buffer),
+        //    and a mirror inverts a rotation: a mirrored orientation (which rotates before mirroring) is inverted.
+        matrix = when (if (isMirrored) orientation.inverse else orientation) {
             CameraOrientation.UP -> matrix
             CameraOrientation.DOWN -> CGAffineTransformRotate(CGAffineTransformTranslate(matrix, 1.0, 1.0), PI)
             CameraOrientation.LEFT -> CGAffineTransformRotate(CGAffineTransformTranslate(matrix, 1.0, 0.0), PI / 2)

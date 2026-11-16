@@ -91,7 +91,7 @@ internal class IosCameraDepthFrameOutput(
                 // Prepare Depth Frame + Metadata
                 val metadata = MediaSampleMetadata.relativeToOutput(
                     timestamp = CMTimeMake(timestampValue, timestampScale),
-                    bufferOrientation = checkNotNull(connection).orientation,
+                    bufferOrientation = checkNotNull(connection).bufferOrientation,
                     isBufferMirrored = connection.videoMirrored,
                     mirrorMode = mirrorMode,
                     outputOrientation = outputOrientation,

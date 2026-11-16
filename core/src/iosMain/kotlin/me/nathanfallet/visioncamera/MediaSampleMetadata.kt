@@ -43,7 +43,7 @@ data class MediaSampleMetadata(
         fun fromConnection(timestamp: CValue<CMTime>, connection: AVCaptureConnection): MediaSampleMetadata =
             MediaSampleMetadata(
                 timestamp = timestamp,
-                orientation = connection.orientation,
+                orientation = connection.bufferOrientation,
                 isMirrored = connection.videoMirrored,
             )
 

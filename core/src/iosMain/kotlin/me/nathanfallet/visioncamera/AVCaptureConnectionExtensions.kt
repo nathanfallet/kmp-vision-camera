@@ -1,10 +1,12 @@
 package me.nathanfallet.visioncamera
 
 import platform.AVFoundation.AVCaptureConnection
+import platform.AVFoundation.AVCaptureDevicePositionFront
 import platform.AVFoundation.AVCaptureDeviceInput
 import platform.AVFoundation.AVCaptureInput
 import platform.AVFoundation.AVCaptureInputPort
 import platform.AVFoundation.AVMediaTypeAudio
+import platform.AVFoundation.position
 import platform.CoreMedia.CMVideoFormatDescriptionGetDimensions
 
 // Port of V5's AVCaptureConnection+deviceInput.swift, AVCaptureConnection+init.swift,
@@ -62,6 +64,31 @@ val AVCaptureConnection.inputStreamResolution: Size?
 @Suppress("DEPRECATION")
 internal val AVCaptureConnection.orientation: CameraOrientation
     get() = cameraOrientationOf(videoOrientation)
+
+/**
+ * The orientation of the buffers this connection delivers, i.e. the rotation that turns them upright before any
+ * mirroring (see [bufferOrientationOf]).
+ */
+internal val AVCaptureConnection.bufferOrientation: CameraOrientation
+    get() = bufferOrientationOf(
+        reportedOrientation = orientation,
+        isFrontCamera = deviceInput?.device?.position == AVCaptureDevicePositionFront,
+        isVideoMirrored = videoMirrored,
+    )
+
+/**
+ * The orientation of the buffers of a connection whose `videoOrientation` is [reportedOrientation].
+ *
+ * AVFoundation gives a front camera's `videoOrientation` for its mirrored (selfie) image: an iPhone 11's front camera
+ * reports `landscapeLeft` while its un-mirrored buffers are laid out like the back camera's `landscapeRight` ones, so
+ * SkiaCamera drew the front camera upside down. When the connection does not mirror its buffers ([isVideoMirrored] is
+ * `false`), the front camera's quarter turns are inverted; portrait orientations are unchanged.
+ */
+internal fun bufferOrientationOf(
+    reportedOrientation: CameraOrientation,
+    isFrontCamera: Boolean,
+    isVideoMirrored: Boolean,
+): CameraOrientation = if (isFrontCamera && !isVideoMirrored) reportedOrientation.inverse else reportedOrientation
 
 /**
  * Sets the [CameraOrientation] of this connection.
