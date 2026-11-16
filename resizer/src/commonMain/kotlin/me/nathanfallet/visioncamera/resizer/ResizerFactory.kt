@@ -28,12 +28,22 @@ import me.nathanfallet.visioncamera.VisionCameraException
  * @throws VisionCameraException If the GPU pipeline could not be created, e.g. because it is not available on this
  * device ([isResizerAvailable]).
  */
-suspend fun createResizer(options: ResizerOptions): Resizer {
+suspend fun createResizer(options: ResizerOptions): Resizer = createResizer(options, ::createPlatformResizerPipeline)
+
+/**
+ * Creates a [Resizer] over the pipeline made by [createPipeline] on a background thread (see the public
+ * [createResizer], which uses the pipeline of the current platform). The pipeline is freed if the caller is cancelled
+ * while it is created.
+ */
+internal suspend fun createResizer(
+    options: ResizerOptions,
+    createPipeline: (options: ResizerOptions) -> ResizerPipeline,
+): Resizer {
     var resizer: Resizer? = null
     try {
         // The pipeline is always created to the end (it can't be interrupted halfway)...
         return withContext(Dispatchers.Default + NonCancellable) {
-            DefaultResizer(createPlatformResizerPipeline(options)).also { resizer = it }
+            DefaultResizer(createPipeline(options)).also { resizer = it }
         }
     } catch (error: CancellationException) {
         // ...but withContext still throws if the caller was cancelled meanwhile: nobody gets the Resizer, so free it.
