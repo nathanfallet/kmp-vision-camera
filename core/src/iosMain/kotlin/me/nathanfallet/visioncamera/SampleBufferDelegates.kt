@@ -56,7 +56,7 @@ internal class FrameDelegate : NSObject(), AVCaptureVideoDataOutputSampleBufferD
         onFrame?.invoke(
             buffer,
             CMSampleBufferGetPresentationTimeStamp(buffer),
-            fromConnection.orientation,
+            fromConnection.bufferOrientation,
             fromConnection.videoMirrored,
         )
     }
