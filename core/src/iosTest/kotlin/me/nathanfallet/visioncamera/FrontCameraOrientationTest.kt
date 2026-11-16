@@ -62,8 +62,8 @@ class FrontCameraOrientationTest {
             val extent = CGRectApplyAffineTransform(CGRectMake(0.0, 0.0, width, height), transform)
             for (corner in corners) {
                 // Core Image's origin is at the bottom left.
-                val actual = CGPointApplyAffineTransform(CGPointMake(corner.x * width, (1 - corner.y) * height), transform)
-                    .useContents { Point(x, y) }
+                val bottomUp = CGPointMake(corner.x * width, (1 - corner.y) * height)
+                val actual = CGPointApplyAffineTransform(bottomUp, transform).useContents { Point(x, y) }
                 val normalized = extent.useContents {
                     Point((actual.x - origin.x) / size.width, 1 - (actual.y - origin.y) / size.height)
                 }
@@ -86,7 +86,10 @@ class FrontCameraOrientationTest {
     @Test
     fun backCameraBuffersAreTaggedRight() {
         assertEquals(UIImageOrientation.UIImageOrientationRight, CameraOrientation.LEFT.toUIImageOrientation())
-        assertEquals(UIImageOrientation.UIImageOrientationLeftMirrored, CameraOrientation.LEFT.toUIImageOrientation(true))
+        assertEquals(
+            UIImageOrientation.UIImageOrientationLeftMirrored,
+            CameraOrientation.LEFT.toUIImageOrientation(isMirrored = true),
+        )
     }
 
     @Test
