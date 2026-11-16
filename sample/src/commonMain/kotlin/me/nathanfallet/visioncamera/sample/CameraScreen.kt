@@ -90,7 +90,7 @@ private enum class StreamMode {
 @Composable
 fun CameraScreen(onOpenSkia: () -> Unit, onOpenMulti: () -> Unit) {
     var rawEnabled by remember { mutableStateOf(false) }
-    var lastRaw by remember { mutableStateOf<String?>(null) }
+    var lastPhoto by remember { mutableStateOf<String?>(null) }
     var position by remember { mutableStateOf(TargetCameraPosition.BACK) }
     var selectedDevice by remember { mutableStateOf<CameraDevice?>(null) }
     var isActive by remember { mutableStateOf(true) }
@@ -189,7 +189,7 @@ fun CameraScreen(onOpenSkia: () -> Unit, onOpenMulti: () -> Unit) {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
-                lastRaw = lastRaw,
+                lastPhoto = lastPhoto,
                 location = location.currentLocation?.let { "${it.latitude.format(4)}, ${it.longitude.format(4)}" }
                     ?: "No location".takeIf { location.hasPermission },
                 streamStats = when (streamMode) {
@@ -226,11 +226,19 @@ fun CameraScreen(onOpenSkia: () -> Unit, onOpenMulti: () -> Unit) {
                                     if (rawEnabled) {
                                         // RAW photos can't be decoded in memory everywhere: save to a file.
                                         val file = photoOutput.capturePhotoToFile(settings)
-                                        val size = fileSize(file.filePath)?.let { "${it / BYTES_PER_KB} KB ($it B)" }
-                                        lastRaw = "${file.containerFormat}, ${size ?: "unknown size"}, " +
-                                            "${file.width}x${file.height}\n${file.filePath}"
+                                        lastPhoto = describeFile(
+                                            "${file.containerFormat}, ${file.width}x${file.height}",
+                                            file.filePath,
+                                        )
                                     } else {
-                                        thumbnail = photoOutput.capturePhoto(settings).use { it.toThumbnail() }
+                                        // Saved to a file too, to check its metadata (e.g. the location in the EXIF).
+                                        photoOutput.capturePhoto(settings).use { photo ->
+                                            thumbnail = photo.toThumbnail()
+                                            lastPhoto = describeFile(
+                                                "${photo.containerFormat}, ${photo.width}x${photo.height}",
+                                                photo.saveToTemporaryFile(),
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -323,7 +331,7 @@ private fun StatusPanel(
     isRunning: Boolean,
     isRecording: Boolean,
     lastVideo: String?,
-    lastRaw: String?,
+    lastPhoto: String?,
     location: String?,
     streamStats: String?,
     scannedCodes: List<String>,
@@ -345,7 +353,7 @@ private fun StatusPanel(
         }
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
-        if (lastRaw != null) Text("Last RAW: $lastRaw", color = Color.White)
+        if (lastPhoto != null) Text("Last photo: $lastPhoto", color = Color.White)
         if (location != null) Text("Location: $location", color = Color.White)
         if (streamStats != null) Text(streamStats, color = Color.White)
         scannedCodes.forEach { Text("Object: $it", color = Color.Green) }
@@ -419,4 +427,10 @@ private const val BYTES_PER_KB = 1024L
 private fun Double.format(decimals: Int = 1): String {
     val factor = 10.0.pow(decimals)
     return ((this * factor).roundToInt() / factor).toString()
+}
+
+/** Describes a saved photo: its [format] and dimensions, its size, and its [path]. */
+private fun describeFile(format: String, path: String): String {
+    val size = fileSize(path)?.let { "${it / BYTES_PER_KB} KB ($it B)" } ?: "unknown size"
+    return "$format, $size\n$path"
 }
