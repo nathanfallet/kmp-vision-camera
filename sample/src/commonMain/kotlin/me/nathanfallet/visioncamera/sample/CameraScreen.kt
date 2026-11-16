@@ -2,6 +2,7 @@ package me.nathanfallet.visioncamera.sample
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +39,8 @@ import me.nathanfallet.visioncamera.CameraController
 import me.nathanfallet.visioncamera.CameraDevice
 import me.nathanfallet.visioncamera.CapturePhotoSettings
 import me.nathanfallet.visioncamera.MediaType
+import me.nathanfallet.visioncamera.PhotoOutputOptions
+import me.nathanfallet.visioncamera.TargetPhotoContainerFormat
 import me.nathanfallet.visioncamera.Recorder
 import me.nathanfallet.visioncamera.RecorderSettings
 import me.nathanfallet.visioncamera.TargetCameraPosition
@@ -84,7 +88,9 @@ private enum class StreamMode {
  * frames or depth, scan barcodes, switch devices, zoom, toggle the torch and pause the session.
  */
 @Composable
-fun CameraScreen(onOpenSkia: () -> Unit) {
+fun CameraScreen(onOpenSkia: () -> Unit, onOpenMulti: () -> Unit) {
+    var rawEnabled by remember { mutableStateOf(false) }
+    var lastRaw by remember { mutableStateOf<String?>(null) }
     var position by remember { mutableStateOf(TargetCameraPosition.BACK) }
     var selectedDevice by remember { mutableStateOf<CameraDevice?>(null) }
     var isActive by remember { mutableStateOf(true) }
@@ -113,7 +119,11 @@ fun CameraScreen(onOpenSkia: () -> Unit) {
     }
     val device = selectedDevice ?: depthDevice?.takeIf { streamMode == StreamMode.DEPTH } ?: defaultDevice
     val previewOutput = rememberPreviewOutput()
-    val photoOutput = rememberPhotoOutput()
+    val photoOutput = rememberPhotoOutput(
+        PhotoOutputOptions(
+            containerFormat = if (rawEnabled) TargetPhotoContainerFormat.DNG else TargetPhotoContainerFormat.NATIVE,
+        ),
+    )
     val videoOutput = rememberVideoOutput()
     val (frameOutput, frameStats) = rememberFrameStats()
     val (depthOutput, depthStats) = rememberDepthStats()
@@ -179,6 +189,7 @@ fun CameraScreen(onOpenSkia: () -> Unit) {
                 isRunning = isRunning,
                 isRecording = recorder != null,
                 lastVideo = lastVideo,
+                lastRaw = lastRaw,
                 location = location.currentLocation?.let { "${it.latitude.format(4)}, ${it.longitude.format(4)}" }
                     ?: "No location".takeIf { location.hasPermission },
                 streamStats = when (streamMode) {
@@ -202,18 +213,33 @@ fun CameraScreen(onOpenSkia: () -> Unit) {
                         },
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     FilledTonalButton(
                         onClick = {
                             scope.launch {
                                 attempt(onError = { lastError = it }) {
                                     val settings = CapturePhotoSettings(location = location.currentLocation)
-                                    thumbnail = photoOutput.capturePhoto(settings).use { it.toThumbnail() }
+                                    if (rawEnabled) {
+                                        // RAW photos can't be decoded in memory everywhere: save to a file.
+                                        val file = photoOutput.capturePhotoToFile(settings)
+                                        val size = fileSize(file.filePath)?.let { "${it / BYTES_PER_KB} KB ($it B)" }
+                                        lastRaw = "${file.containerFormat}, ${size ?: "unknown size"}, " +
+                                            "${file.width}x${file.height}\n${file.filePath}"
+                                    } else {
+                                        thumbnail = photoOutput.capturePhoto(settings).use { it.toThumbnail() }
+                                    }
                                 }
                             }
                         },
                         enabled = controller != null,
-                    ) { Text("Photo") }
+                    ) { Text(if (rawEnabled) "Photo (DNG)" else "Photo") }
+                    FilledTonalButton(onClick = { rawEnabled = !rawEnabled }, enabled = recorder == null) {
+                        Text(if (rawEnabled) "RAW on" else "RAW")
+                    }
                     FilledTonalButton(
                         onClick = {
                             scope.launch {
@@ -243,6 +269,7 @@ fun CameraScreen(onOpenSkia: () -> Unit) {
                         enabled = controller != null && streamMode == StreamMode.VIDEO,
                     ) { Text(if (recorder != null) "Stop" else "Record") }
                     FilledTonalButton(onClick = onOpenSkia, enabled = recorder == null) { Text("Skia") }
+                    FilledTonalButton(onClick = onOpenMulti, enabled = recorder == null) { Text("Multi") }
                     thumbnail?.let {
                         Image(
                             bitmap = it,
@@ -296,6 +323,7 @@ private fun StatusPanel(
     isRunning: Boolean,
     isRecording: Boolean,
     lastVideo: String?,
+    lastRaw: String?,
     location: String?,
     streamStats: String?,
     scannedCodes: List<String>,
@@ -317,6 +345,7 @@ private fun StatusPanel(
         }
         if (isRecording) Text("● Recording", color = Color.Red)
         if (lastVideo != null) Text("Last video: ${lastVideo.substringAfterLast('/')}", color = Color.White)
+        if (lastRaw != null) Text("Last RAW: $lastRaw", color = Color.White)
         if (location != null) Text("Location: $location", color = Color.White)
         if (streamStats != null) Text(streamStats, color = Color.White)
         scannedCodes.forEach { Text("Object: $it", color = Color.Green) }
@@ -385,6 +414,7 @@ private suspend fun attempt(onError: (String) -> Unit, block: suspend () -> Unit
 }
 
 private const val MAX_SLIDER_ZOOM = 10f
+private const val BYTES_PER_KB = 1024L
 
 private fun Double.format(decimals: Int = 1): String {
     val factor = 10.0.pow(decimals)

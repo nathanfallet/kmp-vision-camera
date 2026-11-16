@@ -32,11 +32,14 @@ fun App() {
         Surface(modifier = Modifier.fillMaxSize()) {
             val permission = rememberCameraPermission()
             var showSkia by remember { mutableStateOf(false) }
+            var showMulti by remember { mutableStateOf(false) }
             if (permission.hasPermission) {
                 if (showSkia) {
                     SkiaScreen(onClose = { showSkia = false })
+                } else if (showMulti) {
+                    MultiCamScreen(onClose = { showMulti = false })
                 } else {
-                    CameraScreen(onOpenSkia = { showSkia = true })
+                    CameraScreen(onOpenSkia = { showSkia = true }, onOpenMulti = { showMulti = true })
                 }
             } else {
                 PermissionScreen(
